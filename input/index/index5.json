@@ -1,0 +1,154 @@
+{
+  "procedures": {
+    "AcmeERP.usp_LogAudit": {
+      "params": [
+        {
+          "name": "@Entity",
+          "type": "VARCHAR(50)"
+        },
+        {
+          "name": "@EntityID",
+          "type": "INT"
+        },
+        {
+          "name": "@Message",
+          "type": "VARCHAR(200)"
+        }
+      ],
+      "calls": [],
+      "tables": [
+        "AuditLog"
+      ]
+    },
+    "AcmeERP.usp_CalculateFifoCost": {
+      "params": [
+        {
+          "name": "@ProductID",
+          "type": "INT"
+        },
+        {
+          "name": "@QuantityRequested",
+          "type": "INT"
+        }
+      ],
+      "calls": [
+        "AcmeERP.usp_LogAudit"
+      ],
+      "tables": [
+        "AcmeERP.StockMovements"
+      ]
+    },
+    "AcmeERP.usp_ProcessOrder": {
+      "params": [
+        {
+          "name": "@OrderID",
+          "type": "INT"
+        },
+        {
+          "name": "@Threshold",
+          "type": "NUMERIC(10,2)"
+        }
+      ],
+      "calls": [
+        "AcmeERP.fn_GetOrderTotalWithTax",
+        "AcmeERP.usp_LogAudit"
+      ],
+      "tables": [
+        "OrderAudit"
+      ]
+    },
+    "AcmeERP.usp_PrintCustomerOrders": {
+      "params": [
+        {
+          "name": "@CustomerID",
+          "type": "INT"
+        }
+      ],
+      "calls": [
+        "dbo.fn_GetOrderTotalWithTax"
+      ],
+      "tables": [
+        "Orders"
+      ]
+    },
+    "AcmeERP.usp_CalculateBonus": {
+      "params": [
+        {
+          "name": "@EmployeeID",
+          "type": "INT"
+        },
+        {
+          "name": "@Year",
+          "type": "INT"
+        }
+      ],
+      "calls": [
+        "AcmeERP.usp_LogAudit"
+      ],
+      "tables": [
+        "Sales"
+      ]
+    }
+  },
+  "functions": {
+    "AcmeERP.fn_CalculateTax": {
+      "params": [
+        {
+          "name": "@Amount",
+          "type": "NUMERIC(12,2)"
+        }
+      ],
+      "returns": "NUMERIC(12,2)",
+      "calls": [],
+      "tables": []
+    },
+    "AcmeERP.fn_GetOrderTotalWithTax": {
+      "params": [
+        {
+          "name": "@OrderID",
+          "type": "INT"
+        }
+      ],
+      "returns": "NUMERIC(12,2)",
+      "calls": [
+        "AcmeERP.fn_CalculateTax"
+      ],
+      "tables": [
+        "OrderItems"
+      ]
+    },
+    "AcmeERP.fn_GetHighValueOrders": {
+      "params": [
+        {
+          "name": "@Threshold",
+          "type": "NUMERIC(12,2)"
+        }
+      ],
+      "returns": "TABLE",
+      "calls": [],
+      "tables": [
+        "Orders",
+        "OrderItems"
+      ]
+    }
+  },
+  "triggers": {
+    "trg_AfterInsertOrder": {
+      "on_table": "Orders",
+      "event": "AFTER INSERT",
+      "calls": [
+        "AcmeERP.fn_GetOrderTotalWithTax",
+        "AcmeERP.usp_LogAudit"
+      ],
+      "tables": []
+    },
+    "trg_AfterStockMovement": {
+      "on_table": "StockMovements",
+      "event": "AFTER INSERT",
+      "calls": [
+        "AcmeERP.usp_CalculateFifoCost"
+      ],
+      "tables": []
+    }
+  }
+}

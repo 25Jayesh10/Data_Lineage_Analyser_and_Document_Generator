@@ -1,0 +1,140 @@
+{
+  "procedures": {
+    "usp_WriteAudit": {
+      "params": [
+        {
+          "name": "@eventType",
+          "type": "VARCHAR(50)"
+        },
+        {
+          "name": "@details",
+          "type": "VARCHAR(200)"
+        }
+      ],
+      "calls": [],
+      "tables": [
+        "AuditTrail"
+      ]
+    },
+    "usp_CreatePurchaseOrder": {
+      "params": [
+        {
+          "name": "@itemId",
+          "type": "INT"
+        },
+        {
+          "name": "@quantity",
+          "type": "INT"
+        }
+      ],
+      "calls": [
+        "usp_WriteAudit"
+      ],
+      "tables": [
+        "PurchaseOrders"
+      ]
+    },
+    "usp_ReorderInventory": {
+      "params": [
+        {
+          "name": "@itemId",
+          "type": "INT"
+        }
+      ],
+      "calls": [
+        "usp_CreatePurchaseOrder",
+        "usp_WriteAudit"
+      ],
+      "tables": [
+        "Inventory"
+      ]
+    },
+    "usp_ProcessInventoryUpdate": {
+      "params": [
+        {
+          "name": "@itemId",
+          "type": "INT"
+        },
+        {
+          "name": "@adjustment",
+          "type": "INT"
+        }
+      ],
+      "calls": [
+        "usp_WriteAudit",
+        "usp_ReorderInventory"
+      ],
+      "tables": [
+        "Inventory"
+      ]
+    }
+  },
+  "functions": {
+    "fn_GetStockLevelWithAudit": {
+      "params": [
+        {
+          "name": "@itemId",
+          "type": "INT"
+        }
+      ],
+      "returns": "INT",
+      "calls": [
+        "usp_WriteAudit"
+      ],
+      "tables": [
+        "Inventory"
+      ]
+    },
+    "fn_CheckStockHealth": {
+      "params": [
+        {
+          "name": "@itemId",
+          "type": "INT"
+        }
+      ],
+      "returns": "VARCHAR(20)",
+      "calls": [
+        "dbo.fn_GetStockLevelWithAudit",
+        "usp_WriteAudit"
+      ],
+      "tables": []
+    },
+    "fn_GetInventoryReport": {
+      "params": [
+        {
+          "name": "@itemId",
+          "type": "INT"
+        }
+      ],
+      "returns": "VARCHAR(200)",
+      "calls": [
+        "dbo.fn_GetStockLevelWithAudit",
+        "dbo.fn_CheckStockHealth",
+        "usp_WriteAudit"
+      ],
+      "tables": []
+    }
+  },
+  "triggers": {
+    "trg_AfterInventoryUpdate": {
+      "on_table": "Inventory",
+      "event": "AFTER UPDATE",
+      "calls": [
+        "usp_ProcessInventoryUpdate",
+        "dbo.fn_GetInventoryReport",
+        "usp_WriteAudit"
+      ],
+      "tables": []
+    },
+    "trg_AfterPurchaseOrderInsert": {
+      "on_table": "PurchaseOrders",
+      "event": "AFTER INSERT",
+      "calls": [
+        "usp_WriteAudit",
+        "dbo.fn_CheckStockHealth"
+      ],
+      "tables": []
+    }
+  }
+}
+

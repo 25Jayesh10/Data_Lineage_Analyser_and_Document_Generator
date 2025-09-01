@@ -1,0 +1,48 @@
+{
+    "usp_LogEvent": {
+        "params": [
+            {
+                "name": "@eventType",
+                "type": "VARCHAR(50)"
+            },
+            {
+                "name": "@message",
+                "type": "VARCHAR(200)"
+            }
+        ],
+        "calls": [],
+        "tables": [
+            "AuditLog"
+        ]
+    },
+    "usp_UpdateOrderStatus": {
+        "params": [
+            {
+                "name": "@orderId",
+                "type": "INT"
+            },
+            {
+                "name": "@newStatus",
+                "type": "VARCHAR(20)"
+            }
+        ],
+        "calls": [
+            "usp_LogEvent"
+        ],
+        "tables": [
+            "Orders"
+        ]
+    },
+    "usp_CloseOrder": {
+        "params": [
+            {
+                "name": "@orderId",
+                "type": "INT"
+            }
+        ],
+        "calls": [
+            "usp_UpdateOrderStatus"
+        ],
+        "tables": []
+    }
+}

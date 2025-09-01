@@ -1,0 +1,841 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Sybase Database Object AST Schema",
+  "description": "A schema for the Abstract Syntax Tree (AST) of Sybase ASE database objects, including procedures, functions, and triggers.",
+  "type": "object",
+  "properties": {
+    "procedures": {
+      "description": "An array of stored procedure ASTs.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/procedure"
+      }
+    },
+    "functions": {
+      "description": "An array of function ASTs.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/function"
+      }
+    },
+    "triggers": {
+      "description": "An array of trigger ASTs.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/trigger"
+      }
+    }
+  },
+  "definitions": {
+    "procedure": {
+      "type": "object",
+      "required": [
+        "proc_name",
+        "params",
+        "return_type",
+        "variables",
+        "statements"
+      ],
+      "properties": {
+        "proc_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "type",
+              "mode"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "anyOf": [
+                  {
+                    "enum": [
+                      "INT",
+                      "BIGINT",
+                      "SMALLINT",
+                      "TINYINT",
+                      "VARCHAR",
+                      "CHAR",
+                      "NVARCHAR",
+                      "UNIVARCHAR",
+                      "TEXT",
+                      "IMAGE",
+                      "BIT",
+                      "DATE",
+                      "DATETIME",
+                      "SMALLDATETIME",
+                      "TIME",
+                      "FLOAT",
+                      "NUMERIC",
+                      "DECIMAL",
+                      "MONEY",
+                      "SMALLMONEY"
+                    ]
+                  },
+                  {
+                    "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|MONEY|SMALLMONEY|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\))$"
+                  }
+                ]
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "IN",
+                  "OUT",
+                  "INOUT"
+                ]
+              },
+              "default": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              },
+              "raw_type": {
+                "type": "string"
+              },
+              "precision": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "return_type": {
+          "type": "string",
+          "anyOf": [
+            {
+              "enum": [
+                "VOID",
+                "INT",
+                "BIGINT",
+                "SMALLINT",
+                "TINYINT",
+                "VARCHAR",
+                "CHAR",
+                "NVARCHAR",
+                "UNIVARCHAR",
+                "TEXT",
+                "IMAGE",
+                "BIT",
+                "DATE",
+                "DATETIME",
+                "SMALLDATETIME",
+                "TIME",
+                "FLOAT",
+                "NUMERIC",
+                "DECIMAL",
+                "MONEY",
+                "SMALLMONEY"
+              ]
+            },
+            {
+              "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\)|MONEY|SMALLMONEY|VOID)$"
+            }
+          ]
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "type"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "anyOf": [
+                  {
+                    "enum": [
+                      "INT",
+                      "BIGINT",
+                      "SMALLINT",
+                      "TINYINT",
+                      "VARCHAR",
+                      "CHAR",
+                      "NVARCHAR",
+                      "UNIVARCHAR",
+                      "TEXT",
+                      "IMAGE",
+                      "BIT",
+                      "DATE",
+                      "DATETIME",
+                      "SMALLDATETIME",
+                      "TIME",
+                      "FLOAT",
+                      "NUMERIC",
+                      "DECIMAL",
+                      "MONEY",
+                      "SMALLMONEY"
+                    ]
+                  },
+                  {
+                    "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\)|MONEY|SMALLMONEY)$"
+                  }
+                ]
+              },
+              "raw_type": {
+                "type": "string"
+              },
+              "precision": {
+                "type": "string"
+              },
+              "default": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "statements": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/definitions/statement"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "function": {
+      "type": "object",
+      "required": [
+        "func_name",
+        "params",
+        "return_type",
+        "variables",
+        "statements"
+      ],
+      "properties": {
+        "func_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "type",
+              "mode"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "anyOf": [
+                  {
+                    "enum": [
+                      "INT",
+                      "BIGINT",
+                      "SMALLINT",
+                      "TINYINT",
+                      "VARCHAR",
+                      "CHAR",
+                      "NVARCHAR",
+                      "UNIVARCHAR",
+                      "TEXT",
+                      "IMAGE",
+                      "BIT",
+                      "DATE",
+                      "DATETIME",
+                      "SMALLDATETIME",
+                      "TIME",
+                      "FLOAT",
+                      "NUMERIC",
+                      "DECIMAL",
+                      "MONEY",
+                      "SMALLMONEY"
+                    ]
+                  },
+                  {
+                    "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|MONEY|SMALLMONEY|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\))$"
+                  }
+                ]
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "IN",
+                  "OUT",
+                  "INOUT"
+                ]
+              },
+              "default": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              },
+              "raw_type": {
+                "type": "string"
+              },
+              "precision": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "return_type": {
+          "type": "string",
+          "anyOf": [
+            {
+              "enum": [
+                "VOID",
+                "INT",
+                "BIGINT",
+                "SMALLINT",
+                "TINYINT",
+                "VARCHAR",
+                "CHAR",
+                "NVARCHAR",
+                "UNIVARCHAR",
+                "TEXT",
+                "IMAGE",
+                "BIT",
+                "DATE",
+                "DATETIME",
+                "SMALLDATETIME",
+                "TIME",
+                "FLOAT",
+                "NUMERIC",
+                "DECIMAL",
+                "MONEY",
+                "SMALLMONEY"
+              ]
+            },
+            {
+              "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\)|MONEY|SMALLMONEY|VOID)$"
+            }
+          ]
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "type"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "anyOf": [
+                  {
+                    "enum": [
+                      "INT",
+                      "BIGINT",
+                      "SMALLINT",
+                      "TINYINT",
+                      "VARCHAR",
+                      "CHAR",
+                      "NVARCHAR",
+                      "UNIVARCHAR",
+                      "TEXT",
+                      "IMAGE",
+                      "BIT",
+                      "DATE",
+                      "DATETIME",
+                      "SMALLDATETIME",
+                      "TIME",
+                      "FLOAT",
+                      "NUMERIC",
+                      "DECIMAL",
+                      "MONEY",
+                      "SMALLMONEY"
+                    ]
+                  },
+                  {
+                    "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\)|MONEY|SMALLMONEY)$"
+                  }
+                ]
+              },
+              "raw_type": {
+                "type": "string"
+              },
+              "precision": {
+                "type": "string"
+              },
+              "default": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "statements": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/definitions/statement"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "trigger_name",
+        "on_table",
+        "event",
+        "statements"
+      ],
+      "properties": {
+        "trigger_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "on_table": {
+          "type": "string",
+          "description": "The table the trigger is attached to."
+        },
+        "event": {
+          "type": "string",
+          "description": "The event that fires the trigger (e.g., AFTER INSERT)."
+        },
+        "statements": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/definitions/statement"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "case_expression": {
+      "type": "object",
+      "required": [
+        "type",
+        "case_type",
+        "cases"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "CASE_EXPRESSION"
+          ]
+        },
+        "case_type": {
+          "type": "string",
+          "enum": [
+            "simple",
+            "searched"
+          ]
+        },
+        "operand": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "when",
+              "then"
+            ],
+            "properties": {
+              "when": {
+                "type": "string"
+              },
+              "then": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "else_result": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "column_detail": {
+      "type": "object",
+      "required": [
+        "expr"
+      ],
+      "properties": {
+        "expr": {
+          "type": "string"
+        },
+        "alias": {
+          "type": "string"
+        },
+        "is_case": {
+          "type": "boolean"
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "case_expression": {
+          "$ref": "#/definitions/case_expression"
+        },
+        "case_expressions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/case_expression"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "expression": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "op",
+            "left",
+            "right"
+          ],
+          "properties": {
+            "op": {
+              "type": "string"
+            },
+            "left": {
+              "$ref": "#/definitions/expression"
+            },
+            "right": {
+              "$ref": "#/definitions/expression"
+            }
+          }
+        }
+      ]
+    },
+    "statement": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "FETCH",
+            "SET",
+            "UPDATE",
+            "INSERT",
+            "DELETE",
+            "SELECT",
+            "SELECT_INTO",
+            "DROP_TABLE",
+            "DECLARE_CURSOR",
+            "OPEN_CURSOR",
+            "FETCH_CURSOR",
+            "CLOSE_CURSOR",
+            "DEALLOCATE_CURSOR",
+            "RETURN",
+            "IF",
+            "WHILE",
+            "FOR_CURSOR_LOOP",
+            "RAISERROR",
+            "TRY",
+            "CATCH",
+            "EXECUTE_PROCEDURE",
+            "RAW_SQL",
+            "BEGIN_TRANSACTION",
+            "COMMIT",
+            "ROLLBACK",
+            "DECLARE_TEMP_TABLE",
+            "DECLARE",
+            "DROP_PROCEDURE",
+            "WITH_CTE"
+          ]
+        },
+        "expression": {
+          "$ref": "#/definitions/expression"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/definitions/expression"
+        },
+        "condition": {
+          "$ref": "#/definitions/expression"
+        },
+        "query": {
+          "type": "string"
+        },
+        "into_vars": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "select": {
+          "type": "object",
+          "properties": {
+            "table": {
+              "type": "string"
+            },
+            "columns": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "type"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "INT",
+                          "BIGINT",
+                          "SMALLINT",
+                          "TINYINT",
+                          "VARCHAR",
+                          "CHAR",
+                          "NVARCHAR",
+                          "UNIVARCHAR",
+                          "TEXT",
+                          "IMAGE",
+                          "BIT",
+                          "DATE",
+                          "DATETIME",
+                          "SMALLDATETIME",
+                          "TIME",
+                          "FLOAT",
+                          "NUMERIC",
+                          "DECIMAL",
+                          "MONEY",
+                          "SMALLMONEY"
+                        ]
+                      },
+                      "raw_type": {
+                        "type": "string"
+                      },
+                      "precision": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "column_details": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/column_detail"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "cte_list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "query"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "query": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "main_query": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "table": {
+          "type": "string"
+        },
+        "set": {
+          "type": "object",
+          "patternProperties": {
+            "^.*$": {
+              "$ref": "#/definitions/expression"
+            }
+          },
+          "additionalProperties": false
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "name",
+                  "type"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "INT",
+                          "BIGINT",
+                          "SMALLINT",
+                          "TINYINT",
+                          "VARCHAR",
+                          "CHAR",
+                          "NVARCHAR",
+                          "UNIVARCHAR",
+                          "TEXT",
+                          "IMAGE",
+                          "BIT",
+                          "DATE",
+                          "DATETIME",
+                          "SMALLDATETIME",
+                          "TIME",
+                          "FLOAT",
+                          "NUMERIC",
+                          "DECIMAL",
+                          "MONEY",
+                          "SMALLMONEY"
+                        ]
+                      },
+                      {
+                        "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\)|MONEY|SMALLMONEY)$"
+                      }
+                    ]
+                  },
+                  "raw_type": {
+                    "type": "string"
+                  },
+                  "precision": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "fetch_into": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cursor_name": {
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/expression"
+          }
+        },
+        "then": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/statement"
+          }
+        },
+        "else": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/statement"
+          }
+        },
+        "body": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/statement"
+          }
+        },
+        "column_details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/column_detail"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

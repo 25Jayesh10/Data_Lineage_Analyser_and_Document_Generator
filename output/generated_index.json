@@ -1,0 +1,22 @@
+{
+  "usp_LogEvent": {
+    "calls": [],
+    "tables": [
+      "AuditLog"
+    ]
+  },
+  "usp_UpdateOrderStatus": {
+    "calls": [
+      "usp_LogEvent"
+    ],
+    "tables": [
+      "Orders"
+    ]
+  },
+  "usp_CloseOrder": {
+    "calls": [
+      "usp_UpdateOrderStatus"
+    ],
+    "tables": []
+  }
+}

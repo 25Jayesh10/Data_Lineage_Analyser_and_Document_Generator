@@ -1,0 +1,87 @@
+[
+    {
+        "proc_name": "usp_LogEvent",
+        "params": [
+            {
+                "name": "@eventType",
+                "type": "VARCHAR(50)",
+                "mode": "IN"
+            },
+            {
+                "name": "@message",
+                "type": "VARCHAR(200)",
+                "mode": "IN"
+            }
+        ],
+        "return_type": "VOID",
+        "variables": [],
+        "statements": [
+            {
+                "type": "INSERT",
+                "table": "AuditLog",
+                "columns": [
+                    "EventType",
+                    "EventMessage"
+                ],
+                "query": "VALUES (@eventType, @message)"
+            }
+        ]
+    },
+    {
+        "proc_name": "usp_UpdateOrderStatus",
+        "params": [
+            {
+                "name": "@orderId",
+                "type": "INT",
+                "mode": "IN"
+            },
+            {
+                "name": "@newStatus",
+                "type": "VARCHAR(20)",
+                "mode": "IN"
+            }
+        ],
+        "return_type": "VOID",
+        "variables": [],
+        "statements": [
+            {
+                "type": "UPDATE",
+                "table": "Orders",
+                "set": {
+                    "Status": "@newStatus"
+                },
+                "condition": "OrderID = @orderId"
+            },
+            {
+                "type": "EXECUTE_PROCEDURE",
+                "name": "usp_LogEvent",
+                "args": [
+                    "'ORDER_UPDATE'",
+                    "'Order ' + CONVERT(VARCHAR, @orderId) + ' status changed to ' + @newStatus"
+                ]
+            }
+        ]
+    },
+    {
+        "proc_name": "usp_CloseOrder",
+        "params": [
+            {
+                "name": "@orderId",
+                "type": "INT",
+                "mode": "IN"
+            }
+        ],
+        "return_type": "VOID",
+        "variables": [],
+        "statements": [
+            {
+                "type": "EXECUTE_PROCEDURE",
+                "name": "usp_UpdateOrderStatus",
+                "args": [
+                    "@orderId",
+                    "'CLOSED'"
+                ]
+            }
+        ]
+    }
+]

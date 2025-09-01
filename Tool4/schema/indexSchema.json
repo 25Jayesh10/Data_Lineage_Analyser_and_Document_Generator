@@ -1,40 +1,117 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tool 4 - Data Lineage Input Schema",
+  "title": "Data Lineage Index Schema",
+  "description": "A schema for indexing database objects (procedures, functions, and triggers) and their dependencies for data lineage analysis.",
   "type": "object",
-  "additionalProperties": {
-    "type": "object",
-    "properties": {
-      "params": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "name": {
-              "type": "string"
-            },
-            "type": {
+  "properties": {
+    "procedures": {
+      "description": "A map of stored procedure names to their dependency details.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "params": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": ["name", "type"]
+            }
+          },
+          "calls": {
+            "type": "array",
+            "items": {
               "type": "string"
             }
           },
-          "required": ["name", "type"],
-          "additionalProperties": false
-        }
-      },
-      "calls": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      },
-      "tables": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
+          "tables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["params", "calls", "tables"]
       }
     },
-    "required": ["params", "calls", "tables"],
-    "additionalProperties": false
-  }
+    "functions": {
+      "description": "A map of function names to their dependency details.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "params": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": ["name", "type"]
+            }
+          },
+          "returns": {
+            "type": "string",
+            "description": "The data type returned by the function."
+          },
+          "calls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["params", "returns", "calls", "tables"]
+      }
+    },
+    "triggers": {
+      "description": "A map of trigger names to their dependency details.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "on_table": {
+            "type": "string",
+            "description": "The table the trigger is attached to."
+          },
+          "event": {
+            "type": "string",
+            "description": "The event that fires the trigger (e.g., AFTER INSERT)."
+          },
+          "calls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["on_table", "event", "calls", "tables"]
+      }
+    }
+  },
+  "required": ["procedures", "functions", "triggers"]
 }

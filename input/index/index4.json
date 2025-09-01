@@ -1,0 +1,162 @@
+{
+  "procedures": {
+    "usp_LogEvent": {
+      "params": [
+        {
+          "name": "@eventType",
+          "type": "VARCHAR(50)"
+        },
+        {
+          "name": "@details",
+          "type": "VARCHAR(500)"
+        }
+      ],
+      "calls": [],
+      "tables": [
+        "AuditTrail"
+      ]
+    },
+    "usp_CreateShipment": {
+      "params": [
+        {
+          "name": "@orderId",
+          "type": "INT"
+        },
+        {
+          "name": "@carrier",
+          "type": "VARCHAR(50)"
+        }
+      ],
+      "calls": [
+        "usp_LogEvent"
+      ],
+      "tables": [
+        "Shipments"
+      ]
+    },
+    "usp_FinalizeOrder": {
+      "params": [
+        {
+          "name": "@orderId",
+          "type": "INT"
+        }
+      ],
+      "calls": [
+        "usp_CreateShipment",
+        "usp_LogEvent"
+      ],
+      "tables": [
+        "Orders"
+      ]
+    },
+    "usp_ValidateCustomerCredit": {
+      "params": [
+        {
+          "name": "@customerId",
+          "type": "INT"
+        },
+        {
+          "name": "@amount",
+          "type": "DECIMAL(10,2)"
+        }
+      ],
+      "calls": [
+        "usp_LogEvent"
+      ],
+      "tables": [
+        "Customers"
+      ]
+    },
+    "usp_PlaceOrder": {
+      "params": [
+        {
+          "name": "@customerId",
+          "type": "INT"
+        },
+        {
+          "name": "@amount",
+          "type": "DECIMAL(10,2)"
+        }
+      ],
+      "calls": [
+        "usp_ValidateCustomerCredit",
+        "usp_FinalizeOrder",
+        "usp_LogEvent"
+      ],
+      "tables": [
+        "Orders"
+      ]
+    }
+  },
+  "functions": {
+    "fn_GetCustomerBalanceWithAudit": {
+      "params": [
+        {
+          "name": "@customerId",
+          "type": "INT"
+        }
+      ],
+      "returns": "DECIMAL(10,2)",
+      "calls": [
+        "usp_LogEvent"
+      ],
+      "tables": [
+        "Customers"
+      ]
+    },
+    "fn_GetCreditStatus": {
+      "params": [
+        {
+          "name": "@customerId",
+          "type": "INT"
+        }
+      ],
+      "returns": "VARCHAR(20)",
+      "calls": [
+        "dbo.fn_GetCustomerBalanceWithAudit",
+        "usp_LogEvent"
+      ],
+      "tables": [
+        "Customers"
+      ]
+    },
+    "fn_GetCustomerReport": {
+      "params": [
+        {
+          "name": "@customerId",
+          "type": "INT"
+        }
+      ],
+      "returns": "VARCHAR(500)",
+      "calls": [
+        "dbo.fn_GetCustomerBalanceWithAudit",
+        "dbo.fn_GetCreditStatus",
+        "usp_LogEvent"
+      ],
+      "tables": []
+    }
+  },
+  "triggers": {
+    "trg_AfterOrderInsert": {
+      "on_table": "Orders",
+      "event": "AFTER INSERT",
+      "calls": [
+        "usp_LogEvent",
+        "usp_FinalizeOrder",
+        "dbo.fn_GetCustomerReport"
+      ],
+      "tables": []
+    },
+    "trg_AfterShipmentInsert": {
+      "on_table": "Shipments",
+      "event": "AFTER INSERT",
+      "calls": [
+        "usp_LogEvent",
+        "dbo.fn_GetCreditStatus"
+      ],
+      "tables": [
+        "Orders"
+      ]
+    }
+  }
+}

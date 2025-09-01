@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Database Object Lineage Schema",
-  "description": "A generalized schema to describe lineage relationships and usage of database objects such as tables and stored procedures.",
+  "description": "A generalized schema to describe lineage relationships and usage of database objects such as tables, procedures, functions, and triggers.",
   "type": "object",
   "patternProperties": {
     "^[a-zA-Z0-9_#\\.]+$": {
@@ -14,44 +14,87 @@
       "type": "object",
       "properties": {
         "type": {
-          "description": "The type of the database object (e.g., table, procedure).",
+          "description": "The type of the database object.",
           "type": "string",
           "enum": [
             "procedure",
-            "table"
+            "table",
+            "function",
+            "trigger"
           ]
         },
         "calls": {
-          "description": "A list of procedures that call or reference this database object.",
+          "description": "Outgoing lineage: A list of objects that this procedure, function, or trigger calls.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "called_by": {
+          "description": "For tables: A list of all procedures, functions, or triggers that reference this table.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "called_by_procedure": {
+          "description": "Incoming lineage: A list of procedures that call this procedure or function.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "called_by_function": {
+          "description": "Incoming lineage: A list of functions that call this procedure or function.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "called_by_trigger": {
+          "description": "Incoming lineage: A list of triggers that call this procedure or function.",
           "type": "array",
           "items": {
             "type": "string"
           }
         },
         "columns": {
-          "description": "For tables, this is a list of columns and their specific usage.",
+          "description": "For tables, a list of columns and their specific usage.",
           "type": "array",
           "items": {
             "$ref": "#/$defs/columnDetail"
           }
+        },
+        "on_table": {
+          "description": "For triggers, the table it is attached to.",
+          "type": "string"
+        },
+        "event": {
+          "description": "For triggers, the event that fires it (e.g., AFTER INSERT).",
+          "type": "string"
         }
       },
       "required": [
-        "type",
-        "calls"
+        "type"
       ],
-      "if": {
-        "properties": {
-          "type": {
-            "const": "table"
-          }
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "table" } } },
+          "then": { "required": [ "called_by", "columns" ] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "procedure" } } },
+          "then": { "required": [ "calls", "called_by_procedure", "called_by_function", "called_by_trigger" ] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "function" } } },
+          "then": { "required": [ "calls", "called_by_procedure", "called_by_function", "called_by_trigger" ] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "trigger" } } },
+          "then": { "required": [ "on_table", "event", "calls" ] }
         }
-      },
-      "then": {
-        "required": [
-          "columns"
-        ]
-      }
+      ]
     },
     "columnDetail": {
       "type": "object",
@@ -61,22 +104,32 @@
           "type": "string"
         },
         "usage": {
-          "description": "Describes how the column is accessed by the calling procedure.",
+          "description": "Describes how the column is accessed.",
           "type": "string",
           "enum": [
             "read",
             "write"
           ]
         },
-        "calling_procedure": {
-          "description": "The name of the procedure that is accessing this column.",
+        "caller": {
+          "description": "The name of the object (procedure, function, or trigger) that is accessing this column.",
           "type": "string"
+        },
+        "caller_type": {
+          "description": "The type of the calling object.",
+          "type": "string",
+          "enum": [
+            "procedure",
+            "function",
+            "trigger"
+          ]
         }
       },
       "required": [
         "name",
         "usage",
-        "calling_procedure"
+        "caller",
+        "caller_type"
       ]
     }
   }

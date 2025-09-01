@@ -78,8 +78,8 @@
     "params": [],
     "calls": [],
     "tables": [
-      "employees",
-      "employee_log"
+      "employee_log",
+      "employees"
     ]
   },
   "test1": {
