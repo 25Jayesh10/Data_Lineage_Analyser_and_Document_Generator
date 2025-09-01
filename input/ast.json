@@ -1,0 +1,307 @@
+[
+  {
+    "proc_name": "AcmeERP.usp_CalculateFifoCost",
+    "params": [
+      {
+        "name": "@ProductID",
+        "type": "INT",
+        "mode": "IN"
+      },
+      {
+        "name": "@QuantityRequested",
+        "type": "INT",
+        "mode": "IN"
+      }
+    ],
+    "variables": [],
+    "return_type": "VOID",
+    "statements": [
+      {
+        "type": "WITH_CTE",
+        "cte_list": [
+          {
+            "name": "CTE_FIFO",
+            "query": {
+              "type": "RAW_SQL",
+              "query": "SELECT MovementID, ProductID, Quantity, UnitCost, SUM(Quantity) OVER (PARTITION BY ProductID ORDER BY MovementDate ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS RunningTotal FROM AcmeERP.StockMovements WHERE ProductID = @ProductID AND Direction = 'IN'"
+            }
+          }
+        ],
+        "main_query": {
+          "type": "RAW_SQL",
+          "query": "SELECT AVG(UnitCost) AS FifoCostEstimate FROM CTE_FIFO WHERE RunningTotal <= @QuantityRequested"
+        }
+      }
+    ]
+  },
+  {
+    "proc_name": "sp_process_order",
+    "params": [
+      {
+        "name": "@OrderID",
+        "type": "INT",
+        "mode": "IN"
+      },
+      {
+        "name": "@Threshold",
+        "type": "NUMERIC(10,2)",
+        "mode": "IN"
+      }
+    ],
+    "variables": [
+      {
+        "name": "@OrderTotal",
+        "type": "TEXT"
+      },
+      {
+        "name": "@Status",
+        "type": "NVARCHAR"
+      },
+      {
+        "name": "@Threshold",
+        "type": "TEXT"
+      }
+    ],
+    "return_type": "VOID",
+    "statements": [
+      {
+        "type": "SELECT_INTO",
+        "table": "OrderItems",
+        "columns": [
+          "SUM(Amount)"
+        ],
+        "into_vars": [
+          "@OrderTotal"
+        ],
+        "query": "SELECT @OrderTotal = SUM(Amount) FROM OrderItems WHERE OrderID = @OrderID"
+      },
+      {
+        "type": "IF",
+        "condition": "@OrderTotal IS NULL",
+        "then": [
+          {
+            "type": "SET",
+            "name": "@Status",
+            "value": "'Order Not Found'"
+          },
+          {
+            "type": "IF",
+            "condition": "@OrderTotal >= @Threshold",
+            "then": [
+              {
+                "type": "SET",
+                "name": "@Status",
+                "value": "'High Value'"
+              },
+              {
+                "type": "SET",
+                "name": "@Status",
+                "value": "'Normal'"
+              }
+            ],
+            "else": []
+          }
+        ],
+        "else": []
+      },
+      {
+        "type": "INSERT",
+        "table": "OrderAudit",
+        "columns": [
+          "OrderID",
+          "Status",
+          "CheckedAt"
+        ],
+        "query": "INSERT INTO OrderAudit (OrderID, Status, CheckedAt) VALUES (@OrderID, @Status, GETDATE())"
+      },
+      {
+        "type": "SELECT",
+        "query": "SELECT @OrderID AS OrderID, @OrderTotal AS Total, @Status AS Status"
+      }
+    ]
+  },
+  {
+    "proc_name": "sp_print_customer_orders",
+    "params": [
+      {
+        "name": "@CustomerID",
+        "type": "INT",
+        "mode": "IN"
+      }
+    ],
+    "variables": [
+      {
+        "name": "@OrderID",
+        "type": "INT",
+        "raw_type": "INT"
+      },
+      {
+        "name": "@OrderDate",
+        "type": "DATETIME",
+        "raw_type": "DATETIME"
+      },
+      {
+        "name": "@Total",
+        "type": "NUMERIC",
+        "raw_type": "NUMERIC(10,2)",
+        "precision": "10,2"
+      }
+    ],
+    "return_type": "VOID",
+    "statements": [
+      {
+        "type": "DECLARE_CURSOR",
+        "name": "order_cursor",
+        "query": "SELECT OrderID, OrderDate, Total FROM Orders WHERE CustomerID = @CustomerID"
+      },
+      {
+        "type": "SELECT",
+        "table": "Orders",
+        "columns": [
+          "OrderID",
+          "OrderDate",
+          "Total"
+        ],
+        "column_details": [
+          {
+            "expr": "OrderID"
+          },
+          {
+            "expr": "OrderDate"
+          },
+          {
+            "expr": "Total"
+          }
+        ],
+        "query": "SELECT OrderID, OrderDate, Total FROM Orders WHERE CustomerID = @CustomerID"
+      },
+      {
+        "type": "FETCH",
+        "cursor_name": "order_cursor",
+        "fetch_into": [
+          "@OrderID",
+          "@OrderDate",
+          "@Total"
+        ]
+      },
+      {
+        "type": "FOR_CURSOR_LOOP",
+        "cursor_name": "order_cursor",
+        "condition": "@@FETCH_STATUS = 0",
+        "fetch_into": [
+          "@OrderID",
+          "@OrderDate",
+          "@Total"
+        ],
+        "body": [
+          {
+            "type": "RAISERROR",
+            "query": "RAISERROR ('Error occurred', 16, 1)"
+          },
+          {
+            "type": "FETCH",
+            "cursor_name": "order_cursor",
+            "fetch_into": [
+              "@OrderID",
+              "@OrderDate",
+              "@Total"
+            ]
+          }
+        ],
+        "query": "SELECT OrderID, OrderDate, Total FROM Orders WHERE CustomerID = @CustomerID"
+      }
+    ]
+  },
+  {
+    "proc_name": "sp_calculate_bonus",
+    "params": [
+      {
+        "name": "@EmployeeID",
+        "type": "INT",
+        "mode": "IN"
+      },
+      {
+        "name": "@Year",
+        "type": "INT",
+        "mode": "IN"
+      }
+    ],
+    "variables": [
+      {
+        "name": "@Sales",
+        "type": "TEXT"
+      },
+      {
+        "name": "@Bonus",
+        "type": "DECIMAL(18,2)"
+      }
+    ],
+    "return_type": "VOID",
+    "statements": [
+      {
+        "type": "SELECT_INTO",
+        "table": "Sales",
+        "columns": [
+          "SUM(Amount)"
+        ],
+        "into_vars": [
+          "@Sales"
+        ],
+        "query": "SELECT @Sales = SUM(Amount) FROM Sales WHERE EmployeeID = @EmployeeID AND YEAR(SaleDate) = @Year"
+      },
+      {
+        "type": "IF",
+        "condition": "@Sales IS NULL",
+        "then": [
+          {
+            "type": "RAISERROR",
+            "args": [
+              "'No sales found for employee'",
+              "16",
+              "1"
+            ],
+            "query": "RAISERROR ('Error occurred', 16, 1)"
+          },
+          {
+            "type": "RETURN",
+            "expression": "0"
+          },
+          {
+            "type": "IF",
+            "condition": "@Sales > 100000",
+            "then": [
+              {
+                "type": "SET",
+                "name": "@Bonus",
+                "value": "@Sales * 0.10"
+              },
+              {
+                "type": "IF",
+                "condition": "@Sales > 50000",
+                "then": [
+                  {
+                    "type": "SET",
+                    "name": "@Bonus",
+                    "value": "@Sales * 0.05"
+                  },
+                  {
+                    "type": "SET",
+                    "name": "@Bonus",
+                    "value": "0"
+                  }
+                ],
+                "else": []
+              }
+            ],
+            "else": []
+          }
+        ],
+        "else": []
+      },
+      {
+        "type": "RETURN",
+        "expression": "@Bonus"
+      }
+    ]
+  }
+]

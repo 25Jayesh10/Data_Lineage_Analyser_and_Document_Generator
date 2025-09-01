@@ -1,0 +1,492 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Sybase Stored Procedure AST Schema",
+    "description": "Sybase ASE stored procedure AST schema for consistent conversion to PostgreSQL.",
+    "type": "array",
+    "items": {
+        "type": "object",
+        "required": [
+            "proc_name",
+            "params",
+            "return_type",
+            "variables",
+            "statements"
+        ],
+        "properties": {
+            "proc_name": {
+                "type": "string",
+                "minLength": 1
+            },
+            "params": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": [
+                        "name",
+                        "type",
+                        "mode"
+                    ],
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "type": {
+                            "type": "string",
+                            "anyOf": [
+                                {
+                                    "enum": [
+                                        "INT",
+                                        "BIGINT",
+                                        "SMALLINT",
+                                        "TINYINT",
+                                        "VARCHAR",
+                                        "CHAR",
+                                        "NVARCHAR",
+                                        "UNIVARCHAR",
+                                        "TEXT",
+                                        "IMAGE",
+                                        "BIT",
+                                        "DATE",
+                                        "DATETIME",
+                                        "SMALLDATETIME",
+                                        "TIME",
+                                        "FLOAT",
+                                        "NUMERIC",
+                                        "DECIMAL",
+                                        "MONEY",
+                                        "SMALLMONEY"
+                                    ]
+                                },
+                                {
+                                    "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|MONEY|SMALLMONEY|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\))$"
+                                }
+                            ]
+                        },
+                        "mode": {
+                            "type": "string",
+                            "enum": [
+                                "IN",
+                                "OUT",
+                                "INOUT"
+                            ]
+                        },
+                        "default": {
+                            "type": [
+                                "string",
+                                "number",
+                                "boolean",
+                                "null"
+                            ]
+                        },
+                        "raw_type": {
+                            "type": "string"
+                        },
+                        "precision": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "return_type": {
+                "type": "string",
+                "anyOf": [
+                    {
+                        "enum": [
+                            "VOID",
+                            "INT",
+                            "BIGINT",
+                            "SMALLINT",
+                            "TINYINT",
+                            "VARCHAR",
+                            "CHAR",
+                            "NVARCHAR",
+                            "UNIVARCHAR",
+                            "TEXT",
+                            "IMAGE",
+                            "BIT",
+                            "DATE",
+                            "DATETIME",
+                            "SMALLDATETIME",
+                            "TIME",
+                            "FLOAT",
+                            "NUMERIC",
+                            "DECIMAL",
+                            "MONEY",
+                            "SMALLMONEY"
+                        ]
+                    },
+                    {
+                        "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\)|MONEY|SMALLMONEY|VOID)$"
+                    }
+                ]
+            },
+            "variables": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": [
+                        "name",
+                        "type"
+                    ],
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "type": {
+                            "type": "string",
+                            "anyOf": [
+                                {
+                                    "enum": [
+                                        "INT",
+                                        "BIGINT",
+                                        "SMALLINT",
+                                        "TINYINT",
+                                        "VARCHAR",
+                                        "CHAR",
+                                        "NVARCHAR",
+                                        "UNIVARCHAR",
+                                        "TEXT",
+                                        "IMAGE",
+                                        "BIT",
+                                        "DATE",
+                                        "DATETIME",
+                                        "SMALLDATETIME",
+                                        "TIME",
+                                        "FLOAT",
+                                        "NUMERIC",
+                                        "DECIMAL",
+                                        "MONEY",
+                                        "SMALLMONEY"
+                                    ]
+                                },
+                                {
+                                    "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\)|MONEY|SMALLMONEY)$"
+                                }
+                            ]
+                        },
+                        "raw_type": {
+                            "type": "string"
+                        },
+                        "precision": {
+                            "type": "string"
+                        },
+                        "default": {
+                            "type": [
+                                "string",
+                                "number",
+                                "boolean",
+                                "null"
+                            ]
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "statements": {
+                "type": "array",
+                "maxItems": 500,
+                "items": {
+                    "$ref": "#/definitions/statement"
+                }
+            }
+        },
+        "additionalProperties": false
+    },
+    "definitions": {
+        "expression": {
+            "oneOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "object",
+                    "required": [
+                        "op",
+                        "left",
+                        "right"
+                    ],
+                    "properties": {
+                        "op": {
+                            "type": "string"
+                        },
+                        "left": {
+                            "$ref": "#/definitions/expression"
+                        },
+                        "right": {
+                            "$ref": "#/definitions/expression"
+                        }
+                    }
+                }
+            ]
+        },
+        "statement": {
+            "type": "object",
+            "required": [
+                "type"
+            ],
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "FETCH",
+                        "SET",
+                        "UPDATE",
+                        "INSERT",
+                        "DELETE",
+                        "SELECT",
+                        "SELECT_INTO",
+                        "DROP_TABLE",
+                        "DECLARE_CURSOR",
+                        "OPEN_CURSOR",
+                        "FETCH_CURSOR",
+                        "CLOSE_CURSOR",
+                        "DEALLOCATE_CURSOR",
+                        "RETURN",
+                        "IF",
+                        "WHILE",
+                        "FOR_CURSOR_LOOP",
+                        "RAISERROR",
+                        "TRY",
+                        "CATCH",
+                        "EXECUTE_PROCEDURE",
+                        "RAW_SQL",
+                        "BEGIN_TRANSACTION",
+                        "COMMIT",
+                        "ROLLBACK",
+                        "DECLARE_TEMP_TABLE",
+                        "DECLARE",
+                        "DROP_PROCEDURE",
+                        "WITH_CTE"
+                    ]
+                },
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "$ref": "#/definitions/expression"
+                },
+                "condition": {
+                    "$ref": "#/definitions/expression"
+                },
+                "query": {
+                    "type": "string"
+                },
+                "into_vars": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "select": {
+                    "type": "object",
+                    "properties": {
+                        "table": {
+                            "type": "string"
+                        },
+                        "columns": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "object",
+                                        "required": [
+                                            "name",
+                                            "type"
+                                        ],
+                                        "properties": {
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "INT",
+                                                    "BIGINT",
+                                                    "SMALLINT",
+                                                    "TINYINT",
+                                                    "VARCHAR",
+                                                    "CHAR",
+                                                    "NVARCHAR",
+                                                    "UNIVARCHAR",
+                                                    "TEXT",
+                                                    "IMAGE",
+                                                    "BIT",
+                                                    "DATE",
+                                                    "DATETIME",
+                                                    "SMALLDATETIME",
+                                                    "TIME",
+                                                    "FLOAT",
+                                                    "NUMERIC",
+                                                    "DECIMAL",
+                                                    "MONEY",
+                                                    "SMALLMONEY"
+                                                ]
+                                            },
+                                            "raw_type": {
+                                                "type": "string"
+                                            },
+                                            "precision": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "cte_list": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "name",
+                            "query"
+                        ],
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "query": {
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "object"
+                                    }
+                                ]
+                            }
+                        },
+                        "additionalProperties": false
+                    }
+                },
+                "main_query": {
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "object"
+                        }
+                    ]
+                },
+                "table": {
+                    "type": "string"
+                },
+                "set": {
+                    "type": "object",
+                    "patternProperties": {
+                        "^.*$": {
+                            "$ref": "#/definitions/expression"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "columns": {
+                    "type": "array",
+                    "items": {
+                        "oneOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "object",
+                                "required": [
+                                    "name",
+                                    "type"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string",
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "INT",
+                                                    "BIGINT",
+                                                    "SMALLINT",
+                                                    "TINYINT",
+                                                    "VARCHAR",
+                                                    "CHAR",
+                                                    "NVARCHAR",
+                                                    "UNIVARCHAR",
+                                                    "TEXT",
+                                                    "IMAGE",
+                                                    "BIT",
+                                                    "DATE",
+                                                    "DATETIME",
+                                                    "SMALLDATETIME",
+                                                    "TIME",
+                                                    "FLOAT",
+                                                    "NUMERIC",
+                                                    "DECIMAL",
+                                                    "MONEY",
+                                                    "SMALLMONEY"
+                                                ]
+                                            },
+                                            {
+                                                "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\)|MONEY|SMALLMONEY)$"
+                                            }
+                                        ]
+                                    },
+                                    "raw_type": {
+                                        "type": "string"
+                                    },
+                                    "precision": {
+                                        "type": "string"
+                                    }
+                                },
+                                "additionalProperties": false
+                            }
+                        ]
+                    }
+                },
+                "fetch_into": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "cursor_name": {
+                    "type": "string"
+                },
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/expression"
+                    }
+                },
+                "then": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/statement"
+                    }
+                },
+                "else": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/statement"
+                    }
+                },
+                "body": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/statement"
+                    }
+                }
+            },
+            "additionalProperties": false
+        }
+    }
+}
