@@ -75,9 +75,9 @@ def main():
     input_dir = "input"
     output_dir = "output"
 
-    index_path = os.path.join(input_dir, "index", "index1.json")  # Tool 1 output (already exists)
-    ast_path = os.path.join(input_dir, "ast", "ast1.json")      # Tool 2 output (already exists)
-    output_path = os.path.join(output_dir, "lineage1.json")  # Tool 4 output
+    index_path = os.path.join(input_dir, "index", "index3.json")  # Tool 1 output (already exists)
+    ast_path = os.path.join(input_dir, "ast", "ast3.json")      # Tool 2 output (already exists)
+    output_path = os.path.join(output_dir, "lineage3.json")  # Tool 4 output
 
     # ✅ Validation before running Tool 4
     print(Colours.YELLOW + "Validating index.json and ast.json against schemas..." + Colours.RESET)

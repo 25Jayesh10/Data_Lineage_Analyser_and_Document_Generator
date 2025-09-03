@@ -1,0 +1,269 @@
+{
+  "dbo.AuditTrail": {
+    "called_by": [
+      "dbo.usp_WriteAudit"
+    ],
+    "columns": [
+      {
+        "caller": "dbo.usp_WriteAudit",
+        "caller_type": "procedure",
+        "name": "Details",
+        "usage": "write"
+      },
+      {
+        "caller": "dbo.usp_WriteAudit",
+        "caller_type": "procedure",
+        "name": "EventType",
+        "usage": "write"
+      }
+    ],
+    "type": "table"
+  },
+  "dbo.INSERTED": {
+    "called_by": [
+      "dbo.trg_AfterInventoryUpdate",
+      "dbo.trg_AfterPurchaseOrderInsert"
+    ],
+    "columns": [
+      {
+        "caller": "dbo.trg_AfterInventoryUpdate",
+        "caller_type": "trigger",
+        "name": "ItemID",
+        "usage": "read"
+      },
+      {
+        "caller": "dbo.trg_AfterPurchaseOrderInsert",
+        "caller_type": "trigger",
+        "name": "ItemID",
+        "usage": "read"
+      },
+      {
+        "caller": "dbo.trg_AfterPurchaseOrderInsert",
+        "caller_type": "trigger",
+        "name": "Quantity",
+        "usage": "read"
+      }
+    ],
+    "type": "table"
+  },
+  "dbo.Inventory": {
+    "called_by": [
+      "dbo.fn_GetStockLevelWithAudit",
+      "dbo.usp_ProcessInventoryUpdate",
+      "dbo.usp_ReorderInventory"
+    ],
+    "columns": [
+      {
+        "caller": "dbo.fn_GetStockLevelWithAudit",
+        "caller_type": "function",
+        "name": "ItemID",
+        "usage": "read"
+      },
+      {
+        "caller": "dbo.usp_ProcessInventoryUpdate",
+        "caller_type": "procedure",
+        "name": "ItemID",
+        "usage": "read"
+      },
+      {
+        "caller": "dbo.usp_ReorderInventory",
+        "caller_type": "procedure",
+        "name": "ItemID",
+        "usage": "read"
+      },
+      {
+        "caller": "dbo.usp_ProcessInventoryUpdate",
+        "caller_type": "procedure",
+        "name": "LastUpdated",
+        "usage": "write"
+      },
+      {
+        "caller": "dbo.fn_GetStockLevelWithAudit",
+        "caller_type": "function",
+        "name": "Quantity",
+        "usage": "read"
+      },
+      {
+        "caller": "dbo.usp_ProcessInventoryUpdate",
+        "caller_type": "procedure",
+        "name": "Quantity",
+        "usage": "write"
+      },
+      {
+        "caller": "dbo.usp_ReorderInventory",
+        "caller_type": "procedure",
+        "name": "Quantity",
+        "usage": "read"
+      },
+      {
+        "caller": "dbo.usp_ReorderInventory",
+        "caller_type": "procedure",
+        "name": "ReorderLevel",
+        "usage": "read"
+      },
+      {
+        "caller": "dbo.usp_ProcessInventoryUpdate",
+        "caller_type": "procedure",
+        "name": "adjustment",
+        "usage": "read"
+      },
+      {
+        "caller": "dbo.fn_GetStockLevelWithAudit",
+        "caller_type": "function",
+        "name": "itemId",
+        "usage": "read"
+      },
+      {
+        "caller": "dbo.usp_ProcessInventoryUpdate",
+        "caller_type": "procedure",
+        "name": "itemId",
+        "usage": "read"
+      },
+      {
+        "caller": "dbo.usp_ReorderInventory",
+        "caller_type": "procedure",
+        "name": "itemId",
+        "usage": "read"
+      }
+    ],
+    "type": "table"
+  },
+  "dbo.PurchaseOrders": {
+    "called_by": [
+      "dbo.usp_CreatePurchaseOrder"
+    ],
+    "columns": [
+      {
+        "caller": "dbo.usp_CreatePurchaseOrder",
+        "caller_type": "procedure",
+        "name": "ItemID",
+        "usage": "write"
+      },
+      {
+        "caller": "dbo.usp_CreatePurchaseOrder",
+        "caller_type": "procedure",
+        "name": "Quantity",
+        "usage": "write"
+      },
+      {
+        "caller": "dbo.usp_CreatePurchaseOrder",
+        "caller_type": "procedure",
+        "name": "Status",
+        "usage": "write"
+      }
+    ],
+    "type": "table"
+  },
+  "dbo.fn_CheckStockHealth": {
+    "called_by_function": [
+      "dbo.fn_GetInventoryReport"
+    ],
+    "called_by_procedure": [],
+    "called_by_trigger": [
+      "dbo.trg_AfterPurchaseOrderInsert"
+    ],
+    "calls": [
+      "dbo.fn_GetStockLevelWithAudit",
+      "dbo.usp_WriteAudit"
+    ],
+    "type": "function"
+  },
+  "dbo.fn_GetInventoryReport": {
+    "called_by_function": [],
+    "called_by_procedure": [],
+    "called_by_trigger": [
+      "dbo.trg_AfterInventoryUpdate"
+    ],
+    "calls": [
+      "CONVERT",
+      "dbo.fn_CheckStockHealth",
+      "dbo.fn_GetStockLevelWithAudit",
+      "dbo.usp_WriteAudit"
+    ],
+    "type": "function"
+  },
+  "dbo.fn_GetStockLevelWithAudit": {
+    "called_by_function": [
+      "dbo.fn_CheckStockHealth",
+      "dbo.fn_GetInventoryReport"
+    ],
+    "called_by_procedure": [],
+    "called_by_trigger": [],
+    "calls": [
+      "dbo.usp_WriteAudit"
+    ],
+    "type": "function"
+  },
+  "dbo.trg_AfterInventoryUpdate": {
+    "calls": [
+      "dbo.fn_GetInventoryReport",
+      "dbo.usp_ProcessInventoryUpdate",
+      "dbo.usp_WriteAudit"
+    ],
+    "event": "AFTER UPDATE",
+    "on_table": "dbo.Inventory",
+    "type": "trigger"
+  },
+  "dbo.trg_AfterPurchaseOrderInsert": {
+    "calls": [
+      "dbo.fn_CheckStockHealth",
+      "dbo.usp_WriteAudit"
+    ],
+    "event": "AFTER INSERT",
+    "on_table": "dbo.PurchaseOrders",
+    "type": "trigger"
+  },
+  "dbo.usp_CreatePurchaseOrder": {
+    "called_by_function": [],
+    "called_by_procedure": [
+      "dbo.usp_ReorderInventory"
+    ],
+    "called_by_trigger": [],
+    "calls": [
+      "dbo.usp_WriteAudit"
+    ],
+    "type": "procedure"
+  },
+  "dbo.usp_ProcessInventoryUpdate": {
+    "called_by_function": [],
+    "called_by_procedure": [],
+    "called_by_trigger": [
+      "dbo.trg_AfterInventoryUpdate"
+    ],
+    "calls": [
+      "dbo.usp_ReorderInventory",
+      "dbo.usp_WriteAudit"
+    ],
+    "type": "procedure"
+  },
+  "dbo.usp_ReorderInventory": {
+    "called_by_function": [],
+    "called_by_procedure": [
+      "dbo.usp_ProcessInventoryUpdate"
+    ],
+    "called_by_trigger": [],
+    "calls": [
+      "dbo.usp_CreatePurchaseOrder",
+      "dbo.usp_WriteAudit"
+    ],
+    "type": "procedure"
+  },
+  "dbo.usp_WriteAudit": {
+    "called_by_function": [
+      "dbo.fn_CheckStockHealth",
+      "dbo.fn_GetInventoryReport",
+      "dbo.fn_GetStockLevelWithAudit"
+    ],
+    "called_by_procedure": [
+      "dbo.usp_CreatePurchaseOrder",
+      "dbo.usp_ProcessInventoryUpdate",
+      "dbo.usp_ReorderInventory"
+    ],
+    "called_by_trigger": [
+      "dbo.trg_AfterInventoryUpdate",
+      "dbo.trg_AfterPurchaseOrderInsert"
+    ],
+    "calls": [],
+    "type": "procedure"
+  }
+}

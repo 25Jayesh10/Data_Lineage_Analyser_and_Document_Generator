@@ -31,7 +31,15 @@ def analyze_lineage(index_file: str, ast_file: str, output_file: str):
         'RAISERROR', 'RETURN', 'WHILE', 'WITH', 'CTE', 'IN'
     }
 
-    # NEW: Helper function to recursively extract all string values from a nested AST node.
+    # CHANGED: Added a helper to ensure all object names are schema-qualified.
+    def normalize_name(name):
+        """Ensure object name has a schema, defaulting to 'dbo'."""
+        if not isinstance(name, str) or '.' in name or not name:
+            return name
+        if name.upper() in SQL_KEYWORDS or name.startswith('@'):
+            return name
+        return f"dbo.{name}"
+
     def get_strings_from_node(node):
         """Recursively extracts all string values from a nested AST node."""
         strings = []
@@ -48,21 +56,27 @@ def analyze_lineage(index_file: str, ast_file: str, output_file: str):
     def extract_referenced_columns(sql_string: str, objects_to_exclude: set):
         """Extracts potential column names from a targeted SQL string."""
         if not sql_string: return ["*"]
+        
+        # CHANGED: Normalize excluded objects to ensure accurate filtering.
+        normalized_exclude = {normalize_name(o) for o in objects_to_exclude}
+        
         potential_identifiers = re.findall(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', sql_string)
         
         actual_columns = {
             col for col in potential_identifiers 
             if col.upper() not in SQL_KEYWORDS 
             and not col.startswith('@')
-            and col not in objects_to_exclude
+            and col not in normalized_exclude
+            and normalize_name(col) not in normalized_exclude
         }
         return sorted(list(actual_columns)) or ["*"]
 
     def extract_calls_from_expression(expression):
         if not isinstance(expression, str): return []
-        pattern = r'\b(?:[a-zA-Z0-9_]+\.)?([a-zA-Z0-9_]+)\s*\('
+        pattern = r'\b((?:[a-zA-Z0-9_]+\.)?[a-zA-Z0-9_]+)\s*\('
         calls = re.findall(pattern, expression)
-        return list(set([c.split('.')[-1] for c in calls]))
+        # CHANGED: Return full, normalized names instead of stripping schemas.
+        return list(set([normalize_name(c) for c in calls]))
 
     def process_expression_condition(proc, expr, table_usage, lineage):
         if isinstance(expr, str):
@@ -84,7 +98,8 @@ def analyze_lineage(index_file: str, ast_file: str, output_file: str):
 
             if stmt_type == "EXECUTE_PROCEDURE":
                 if proc_name := stmt.get("name"):
-                    lineage[proc]["calls"].add(proc_name.split('.')[-1])
+                    # CHANGED: Add normalized name.
+                    lineage[proc]["calls"].add(normalize_name(proc_name))
 
             elif stmt_type == "SET" and "value" in stmt:
                 process_expression_condition(proc, stmt["value"], table_usage, lineage)
@@ -101,7 +116,6 @@ def analyze_lineage(index_file: str, ast_file: str, output_file: str):
                 if "select_statement" in stmt and isinstance(cursor_query := stmt.get("select_statement"), dict):
                     process_statements(proc, [cursor_query], table_usage, lineage, cte_names)
             
-            # --- MODIFIED BLOCK START ---
             elif stmt_type in ("SELECT", "SELECT_INTO"):
                 query_obj = stmt if stmt_type == "SELECT" else stmt.get("query", {})
                 
@@ -109,13 +123,11 @@ def analyze_lineage(index_file: str, ast_file: str, output_file: str):
                     from_clause = query_obj.get("from")
                     tables = [from_clause] if isinstance(from_clause, str) else []
                     
-                    # Precisely collect strings only from column and where clauses
                     strings_to_analyze = []
                     strings_to_analyze.extend(query_obj.get("columns", []))
                     strings_to_analyze.extend(get_strings_from_node(query_obj.get("where", {})))
                     full_query_str = " ".join(strings_to_analyze)
 
-                    # Identify aliases in the SELECT list to exclude them as source columns
                     aliases = {
                         match.group(1)
                         for col_expr in query_obj.get("columns", [])
@@ -125,38 +137,55 @@ def analyze_lineage(index_file: str, ast_file: str, output_file: str):
                     objects_to_exclude = set(tables) | cte_names | aliases
                     columns = extract_referenced_columns(full_query_str, objects_to_exclude)
                     
-                    for table in tables:
-                        if table and table not in ["DUMMY_TABLE", "NO_TABLE"] and table not in cte_names:
-                            lineage[table]["type"] = "table"
-                            table_usage[table][proc].append({"op": "read", "cols": columns})
-            # --- MODIFIED BLOCK END ---
+                    for table_name in tables:
+                        if table_name and table_name not in ["DUMMY_TABLE", "NO_TABLE"] and table_name not in cte_names:
+                            # CHANGED: Use normalized table names for keys.
+                            norm_table = normalize_name(table_name)
+                            lineage[norm_table]["type"] = "table"
+                            table_usage[norm_table][proc].append({"op": "read", "cols": columns})
             
+            # --- MODIFIED BLOCK FOR UPDATE ---
             elif stmt_type == "UPDATE":
-                if table := stmt.get("table"):
+                if table_name := stmt.get("table"):
+                    # CHANGED: Use normalized table names.
+                    norm_table = normalize_name(table_name)
+                    lineage[norm_table]["type"] = "table"
+
+                    # Get columns being written to (in the SET clause)
                     set_cols = list(stmt.get("set", {}).keys())
-                    # Precisely collect strings from the where clause
+                    if set_cols:
+                        table_usage[norm_table][proc].append({"op": "write", "cols": sorted(set_cols)})
+
+                    # Get columns being read from (in WHERE and SET values)
                     where_strings = get_strings_from_node(stmt.get("where", {}))
-                    where_cols = extract_referenced_columns(" ".join(where_strings), {table})
-                    all_cols = sorted(list(set(set_cols + where_cols)))
+                    set_value_strings = get_strings_from_node(list(stmt.get("set", {}).values()))
+                    read_strings = " ".join(where_strings + set_value_strings)
                     
-                    lineage[table]["type"] = "table"
-                    table_usage[table][proc].append({"op": "write", "cols": all_cols})
+                    # Exclude the table itself and written columns to find read columns
+                    read_cols = extract_referenced_columns(read_strings, {norm_table} | set(set_cols))
+                    
+                    if read_cols and read_cols != ['*']:
+                        table_usage[norm_table][proc].append({"op": "read", "cols": read_cols})
+            # --- END MODIFIED BLOCK FOR UPDATE ---
 
             elif stmt_type == "INSERT":
-                if table := stmt.get("table"):
+                if table_name := stmt.get("table"):
+                    # CHANGED: Use normalized table names.
+                    norm_table = normalize_name(table_name)
                     columns = stmt.get("columns", ["*"])
-                    lineage[table]["type"] = "table"
-                    table_usage[table][proc].append({"op": "write", "cols": columns})
+                    lineage[norm_table]["type"] = "table"
+                    table_usage[norm_table][proc].append({"op": "write", "cols": columns})
                 if "select_statement" in stmt:
                     process_statements(proc, [stmt["select_statement"]], table_usage, lineage, cte_names)
 
             elif stmt_type == "DELETE":
-                if table := stmt.get("table"):
-                    # Precisely collect strings from the where clause
+                if table_name := stmt.get("table"):
+                    # CHANGED: Use normalized table names.
+                    norm_table = normalize_name(table_name)
                     where_strings = get_strings_from_node(stmt.get("where", {}))
-                    columns = extract_referenced_columns(" ".join(where_strings), {table})
-                    lineage[table]["type"] = "table"
-                    table_usage[table][proc].append({"op": "write", "cols": columns})
+                    columns = extract_referenced_columns(" ".join(where_strings), {norm_table})
+                    lineage[norm_table]["type"] = "table"
+                    table_usage[norm_table][proc].append({"op": "write", "cols": columns})
 
             if "condition" in stmt:
                 process_expression_condition(proc, stmt["condition"], table_usage, lineage)
@@ -164,7 +193,7 @@ def analyze_lineage(index_file: str, ast_file: str, output_file: str):
                 if key in stmt and isinstance(stmt.get(key), list):
                     process_statements(proc, stmt[key], table_usage, lineage, cte_names)
     
-    # --- Main Execution (No changes from here down) ---
+    # --- Main Execution ---
     try:
         with open(index_file, 'r') as f: index_data = json.load(f)
         with open(ast_file, 'r') as f: ast_data = json.load(f)
@@ -177,30 +206,28 @@ def analyze_lineage(index_file: str, ast_file: str, output_file: str):
     all_db_objects = {}
 
     key_map = {"procedures": "proc_name", "functions": "func_name", "triggers": "trigger_name"}
+    # CHANGED: Normalize all object names from the index.
     for obj_type, container in index_data.items():
         if obj_type in key_map:
-            for name in container.keys(): all_db_objects[name] = {"type": obj_type[:-1]}
-            
-    # Also discover tables from the AST that might not be in the index
-    for proc_def in ast_data.get("procedures", []):
-        for stmt in proc_def.get("statements", []):
-            if table_name := stmt.get("table"):
-                if table_name not in all_db_objects:
-                    all_db_objects[table_name] = {"type": "table"}
+            for name in container.keys():
+                all_db_objects[normalize_name(name)] = {"type": obj_type[:-1]}
+    
+    # CHANGED: Normalize object names from the AST.
+    ast_map = {normalize_name(item.get(key)): item for type, key in key_map.items() for item in ast_data.get(type, []) if item.get(key)}
 
-    ast_map = {item.get(key): item for type, key in key_map.items() for item in ast_data.get(type, []) if item.get(key)}
     for name, ast in ast_map.items():
         process_statements(name, ast.get("statements", []), table_usage, lineage)
 
-    for name, meta in lineage.items():
-        if meta.get("type") == "table" and name not in all_db_objects:
+    for name in list(lineage.keys()):
+        if lineage[name].get("type") == "table" and name not in all_db_objects:
             all_db_objects[name] = {"type": "table"}
 
     called_by_map = defaultdict(lambda: defaultdict(set))
     for name, obj_data in all_db_objects.items():
         if obj_data["type"] != "table":
             for called in lineage.get(name, {}).get("calls", set()):
-                called_by_map[called.split('.')[-1]][obj_data["type"]].add(name)
+                # CHANGED: Use the full, normalized name of the called object as the key.
+                called_by_map[called][obj_data["type"]].add(name)
     
     formatted_lineage = {}
     for name in sorted(all_db_objects.keys()):
@@ -228,17 +255,21 @@ def analyze_lineage(index_file: str, ast_file: str, output_file: str):
             entry["columns"] = sorted(columns_list, key=lambda x: (x['name'], x['caller']))
 
         elif obj_type in ["procedure", "function"]:
-            entry["calls"] = sorted([c.split('.')[-1] for c in lineage[name].get("calls", set())])
+            # CHANGED: Do not strip schemas from called objects.
+            entry["calls"] = sorted(list(lineage[name].get("calls", set())))
             calls = called_by_map.get(name, {})
             entry["called_by_procedure"] = sorted(list(calls.get("procedure", set())))
             entry["called_by_function"] = sorted(list(calls.get("function", set())))
             entry["called_by_trigger"] = sorted(list(calls.get("trigger", set())))
 
         elif obj_type == "trigger":
-            info = index_data.get("triggers", {}).get(name, {})
-            entry["on_table"] = info.get("on_table")
+            # CHANGED: Normalize trigger name to look up in index.
+            simple_name = name.split('.')[-1]
+            info = index_data.get("triggers", {}).get(simple_name, {})
+            entry["on_table"] = normalize_name(info.get("on_table"))
             entry["event"] = info.get("event")
-            entry["calls"] = sorted([c.split('.')[-1] for c in lineage[name].get("calls", set())])
+            # CHANGED: Do not strip schemas from called objects.
+            entry["calls"] = sorted(list(lineage[name].get("calls", set())))
         
         formatted_lineage[name] = entry
 
