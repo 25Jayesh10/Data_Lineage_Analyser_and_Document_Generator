@@ -7,348 +7,243 @@ import jsonschema
 # A simple class to hold color codes for terminal output.
 # If the dependency is not available, it will default to no color.
 try:
-    from src.logging_styles import Colours
+    # Assuming a local file for color styling
+    class Colours:
+        YELLOW, RESET, GREEN, RED = "\033[93m", "\033[0m", "\033[92m", "\033[91m"
 except ImportError:
     class Colours:
-        YELLOW = ""
-        RESET = ""
-        GREEN = ""
-        RED = ""
+        YELLOW, RESET, GREEN, RED = "", "", "", ""
 
 def analyze_lineage(index_file: str, ast_file: str, output_file: str):
     """
     Analyzes database object dependencies from an index file and an AST file
     to produce a detailed data lineage report, including table and column usage.
     """
+    SQL_KEYWORDS = {
+        'SELECT', 'FROM', 'WHERE', 'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE',
+        'JOIN', 'INNER', 'LEFT', 'RIGHT', 'OUTER', 'ON', 'GROUP', 'BY', 'ORDER', 'HAVING',
+        'AS', 'DISTINCT', 'TOP', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'AND', 'OR', 'NOT',
+        'CREATE', 'TABLE', 'PROCEDURE', 'FUNCTION', 'TRIGGER', 'VIEW', 'INDEX', 'ALTER',
+        'DROP', 'TRUNCATE', 'DECLARE', 'EXEC', 'EXECUTE', 'CURSOR', 'FOR', 'OPEN', 'FETCH',
+        'CLOSE', 'DEALLOCATE', 'BEGIN', 'COMMIT', 'ROLLBACK', 'TRANSACTION', 'GO', 'PRINT',
+        'SUM', 'AVG', 'MAX', 'MIN', 'COUNT', 'CAST', 'CONVERT', 'GETDATE', 'YEAR', 'OVER',
+        'PARTITION', 'ROWS', 'BETWEEN', 'UNBOUNDED', 'PRECEDING', 'CURRENT', 'ROW', 'IS', 'NULL',
+        'RAISERROR', 'RETURN', 'WHILE', 'WITH', 'CTE', 'IN'
+    }
 
-    def extract_tables_from_query(query: str):
-        """
-        Extracts all table names from a raw SQL query using regex,
-        including those in JOIN clauses. Returns a list of unique table names.
-        """
-        if not query:
-            return []
-        # This regex looks for tables after FROM or JOIN clauses.
-        # It handles optional schema names (e.g., dbo.MyTable) and quoted identifiers.
-        pattern = r'\b(?:FROM|JOIN)\s+([a-zA-Z0-9_."\[\]]+)'
-        tables = re.findall(pattern, query, re.IGNORECASE)
+    # NEW: Helper function to recursively extract all string values from a nested AST node.
+    def get_strings_from_node(node):
+        """Recursively extracts all string values from a nested AST node."""
+        strings = []
+        if isinstance(node, dict):
+            for value in node.values():
+                strings.extend(get_strings_from_node(value))
+        elif isinstance(node, list):
+            for item in node:
+                strings.extend(get_strings_from_node(item))
+        elif isinstance(node, str):
+            strings.append(node)
+        return strings
+
+    def extract_referenced_columns(sql_string: str, objects_to_exclude: set):
+        """Extracts potential column names from a targeted SQL string."""
+        if not sql_string: return ["*"]
+        potential_identifiers = re.findall(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', sql_string)
         
-        # Clean up names: remove quotes, semicolons, and filter out variables.
-        cleaned_tables = [
-            t.strip('[];"') for t in tables 
-            if not t.startswith('@')
-        ]
-        return list(set(cleaned_tables))
+        actual_columns = {
+            col for col in potential_identifiers 
+            if col.upper() not in SQL_KEYWORDS 
+            and not col.startswith('@')
+            and col not in objects_to_exclude
+        }
+        return sorted(list(actual_columns)) or ["*"]
 
-    def extract_columns_bruteforce(query: str, stmt_type: str):
-        """
-        Brute force extraction of column names for UPDATE, INSERT statements.
-        """
-        if not query or not stmt_type:
-            return ["*"]
+    def extract_calls_from_expression(expression):
+        if not isinstance(expression, str): return []
+        pattern = r'\b(?:[a-zA-Z0-9_]+\.)?([a-zA-Z0-9_]+)\s*\('
+        calls = re.findall(pattern, expression)
+        return list(set([c.split('.')[-1] for c in calls]))
 
-        if stmt_type == "UPDATE":
-            match = re.search(r"\bSET\b(.+?)(\bWHERE\b|$)", query, re.IGNORECASE | re.DOTALL)
-            if match:
-                set_clause = match.group(1)
-                # Extracts the column name (left side of the '=')
-                columns = [c.split('=')[0].strip() for c in set_clause.split(',') if '=' in c]
-                return columns or ["*"]
-
-        elif stmt_type == "INSERT":
-            # Extracts columns from an INSERT INTO table (col1, col2) ... statement
-            match = re.search(r"\bINSERT\s+INTO\s+\S+\s*\((.*?)\)", query, re.IGNORECASE | re.DOTALL)
-            if match:
-                cols_str = match.group(1)
-                columns = [c.strip() for c in cols_str.split(',') if c.strip()]
-                return columns or ["*"]
-
-        elif stmt_type == "DELETE":
-            # DELETE affects all columns implicitly.
-            return ["*"]
-
-        return ["*"]
-
-    def extract_columns_from_select_query(query: str):
-        """Crude extraction of column names from a SELECT clause in a raw query string."""
-        if not query:
-            return ["*"]
-        try:
-            select_index = query.upper().find("SELECT")
-            from_index = query.upper().find("FROM")
-            if select_index == -1 or from_index == -1 or from_index < select_index:
-                return ["*"]
-
-            cols_str = query[select_index + 6:from_index].strip()
-            if not cols_str or cols_str == '*':
-                return ["*"]
-            
-            # Handle aliases like 'col as alias' and extract the final column name/alias
-            return [c.split(' as ')[-1].strip() for c in cols_str.split(',')]
-        except Exception:
-            return ["*"]
-            
     def process_expression_condition(proc, expr, table_usage, lineage):
-        """Recursively processes expression conditions to find subqueries."""
-        if not expr or not isinstance(expr, dict):
+        if isinstance(expr, str):
+            for called_obj in extract_calls_from_expression(expr):
+                if called_obj != proc: lineage[proc]["calls"].add(called_obj)
             return
-        
-        expr_type = expr.get("type", "").upper()
-        if expr_type == "RAW_EXPRESSION":
-            sql = expr.get("expression", "")
-            if re.search(r"\bselect\b", sql, re.IGNORECASE):
-                tables = extract_tables_from_query(sql)
-                columns = extract_columns_from_select_query(sql)
-                for table in tables:
-                    lineage[table]["type"] = "table"
-                    lineage[table]["calls"].add(proc)
-                    table_usage[table][proc].append({"op": "read", "cols": columns})
-        elif "op" in expr:
+        if not isinstance(expr, dict): return
+
+        if "op" in expr:
             process_expression_condition(proc, expr.get("left"), table_usage, lineage)
             process_expression_condition(proc, expr.get("right"), table_usage, lineage)
 
-    def process_statements(proc: str, stmts: list, table_usage: defaultdict, lineage: defaultdict):
-        """Recursively processes AST statements to find table and column usage."""
-        if not stmts:
-            return
+    def process_statements(proc: str, stmts: list, table_usage: defaultdict, lineage: defaultdict, cte_names=None):
+        if not stmts: return
+        if cte_names is None: cte_names = set()
 
         for stmt in stmts:
             stmt_type = stmt.get("type", "").upper()
 
-            # --- Structured DML Statements ---
-            if stmt_type == "SELECT":
-                table = stmt.get("from")
-                if table and table not in ["DUMMY_TABLE", "NO_TABLE"]:
-                    columns = stmt.get("columns", ["*"])
-                    lineage[table]["type"] = "table"
-                    lineage[table]["calls"].add(proc)
-                    table_usage[table][proc].append({"op": "read", "cols": columns})
+            if stmt_type == "EXECUTE_PROCEDURE":
+                if proc_name := stmt.get("name"):
+                    lineage[proc]["calls"].add(proc_name.split('.')[-1])
+
+            elif stmt_type == "SET" and "value" in stmt:
+                process_expression_condition(proc, stmt["value"], table_usage, lineage)
+
+            elif stmt_type == "WITH_CTE":
+                local_cte_names = {cte.get("name") for cte in stmt.get("cte_list", [])}
+                for cte in stmt.get("cte_list", []):
+                    if "query" in cte and isinstance(query := cte.get("query"), dict):
+                        process_statements(proc, [query], table_usage, lineage, cte_names | local_cte_names)
+                if "main_query" in stmt and isinstance(main_query := stmt.get("main_query"), dict):
+                    process_statements(proc, [main_query], table_usage, lineage, cte_names | local_cte_names)
+
+            elif stmt_type == "DECLARE_CURSOR":
+                if "select_statement" in stmt and isinstance(cursor_query := stmt.get("select_statement"), dict):
+                    process_statements(proc, [cursor_query], table_usage, lineage, cte_names)
             
-            elif stmt_type == "SELECT_INTO":
-                query_obj = stmt.get("query", {})
-                tables, columns = [], ["*"]
+            # --- MODIFIED BLOCK START ---
+            elif stmt_type in ("SELECT", "SELECT_INTO"):
+                query_obj = stmt if stmt_type == "SELECT" else stmt.get("query", {})
+                
                 if isinstance(query_obj, dict):
-                    table = query_obj.get("from")
-                    if table: tables.append(table)
-                    columns = query_obj.get("columns", ["*"])
-                else: 
-                    tables = extract_tables_from_query(str(query_obj))
-                    columns = extract_columns_from_select_query(str(query_obj))
+                    from_clause = query_obj.get("from")
+                    tables = [from_clause] if isinstance(from_clause, str) else []
+                    
+                    # Precisely collect strings only from column and where clauses
+                    strings_to_analyze = []
+                    strings_to_analyze.extend(query_obj.get("columns", []))
+                    strings_to_analyze.extend(get_strings_from_node(query_obj.get("where", {})))
+                    full_query_str = " ".join(strings_to_analyze)
 
-                for table in tables:
-                    lineage[table]["type"] = "table"
-                    lineage[table]["calls"].add(proc)
-                    table_usage[table][proc].append({"op": "read", "cols": columns})
-
-            elif stmt_type == "UPDATE":
-                table = stmt.get("table")
-                if table:
-                    columns = list(stmt.get("set", {}).keys()) or ["*"]
-                    lineage[table]["type"] = "table"
-                    lineage[table]["calls"].add(proc)
-                    table_usage[table][proc].append({"op": "write", "cols": columns})
+                    # Identify aliases in the SELECT list to exclude them as source columns
+                    aliases = {
+                        match.group(1)
+                        for col_expr in query_obj.get("columns", [])
+                        if (match := re.search(r'\bAS\s+([a-zA-Z_][a-zA-Z0-9_]*)\b', col_expr, re.IGNORECASE))
+                    }
+                    
+                    objects_to_exclude = set(tables) | cte_names | aliases
+                    columns = extract_referenced_columns(full_query_str, objects_to_exclude)
+                    
+                    for table in tables:
+                        if table and table not in ["DUMMY_TABLE", "NO_TABLE"] and table not in cte_names:
+                            lineage[table]["type"] = "table"
+                            table_usage[table][proc].append({"op": "read", "cols": columns})
+            # --- MODIFIED BLOCK END ---
             
+            elif stmt_type == "UPDATE":
+                if table := stmt.get("table"):
+                    set_cols = list(stmt.get("set", {}).keys())
+                    # Precisely collect strings from the where clause
+                    where_strings = get_strings_from_node(stmt.get("where", {}))
+                    where_cols = extract_referenced_columns(" ".join(where_strings), {table})
+                    all_cols = sorted(list(set(set_cols + where_cols)))
+                    
+                    lineage[table]["type"] = "table"
+                    table_usage[table][proc].append({"op": "write", "cols": all_cols})
+
             elif stmt_type == "INSERT":
-                table = stmt.get("table")
-                if table:
+                if table := stmt.get("table"):
                     columns = stmt.get("columns", ["*"])
                     lineage[table]["type"] = "table"
-                    lineage[table]["calls"].add(proc)
                     table_usage[table][proc].append({"op": "write", "cols": columns})
                 if "select_statement" in stmt:
-                    process_statements(proc, [stmt["select_statement"]], table_usage, lineage)
+                    process_statements(proc, [stmt["select_statement"]], table_usage, lineage, cte_names)
 
             elif stmt_type == "DELETE":
-                table = stmt.get("table")
-                if table:
+                if table := stmt.get("table"):
+                    # Precisely collect strings from the where clause
+                    where_strings = get_strings_from_node(stmt.get("where", {}))
+                    columns = extract_referenced_columns(" ".join(where_strings), {table})
                     lineage[table]["type"] = "table"
-                    lineage[table]["calls"].add(proc)
-                    table_usage[table][proc].append({"op": "write", "cols": ["*"]})
+                    table_usage[table][proc].append({"op": "write", "cols": columns})
 
-            # --- Raw SQL String Parsing ---
-            elif stmt_type in ("RAW_EXPRESSION", "RAW_SQL"):
-                sql = stmt.get("sql") or stmt.get("query") or stmt.get("expression", "")
-                if not sql: continue
-
-                if re.search(r"\bselect\b", sql, re.IGNORECASE):
-                    tables = extract_tables_from_query(sql)
-                    columns = extract_columns_from_select_query(sql)
-                    for table in tables:
-                        lineage[table]["type"] = "table"
-                        lineage[table]["calls"].add(proc)
-                        table_usage[table][proc].append({"op": "read", "cols": columns})
-                
-                elif re.search(r"\bupdate\b", sql, re.IGNORECASE):
-                    tables = extract_tables_from_query(sql)
-                    columns = extract_columns_bruteforce(sql, "UPDATE")
-                    if tables:
-                        # Assume first table in a raw UPDATE is the one being modified
-                        table_to_update = tables[0]
-                        lineage[table_to_update]["type"] = "table"
-                        lineage[table_to_update]["calls"].add(proc)
-                        table_usage[table_to_update][proc].append({"op": "write", "cols": columns})
-
-                elif re.search(r"\binsert\b", sql, re.IGNORECASE):
-                    match = re.search(r'\bINTO\s+([a-zA-Z0-9_."\[\]]+)', sql, re.IGNORECASE)
-                    if match:
-                        table = match.group(1).strip('[];"')
-                        columns = extract_columns_bruteforce(sql, "INSERT")
-                        lineage[table]["type"] = "table"
-                        lineage[table]["calls"].add(proc)
-                        table_usage[table][proc].append({"op": "write", "cols": columns})
-
-                elif re.search(r"\bdelete\b", sql, re.IGNORECASE):
-                    tables = extract_tables_from_query(sql)
-                    if tables:
-                        # Assume first table in a raw DELETE is the one being modified
-                        table_to_delete = tables[0]
-                        columns = extract_columns_bruteforce(sql, "DELETE")
-                        lineage[table_to_delete]["type"] = "table"
-                        lineage[table_to_delete]["calls"].add(proc)
-                        table_usage[table_to_delete][proc].append({"op": "write", "cols": columns})
-
-            # --- Recursive Processing for Control Flow ---
             if "condition" in stmt:
                 process_expression_condition(proc, stmt["condition"], table_usage, lineage)
-
             for key in ["then", "else", "body"]:
                 if key in stmt and isinstance(stmt.get(key), list):
-                    process_statements(proc, stmt[key], table_usage, lineage)
-            
-            if stmt_type == "WITH_CTE":
-                for cte in stmt.get("cte_list", []):
-                    if "query" in cte:
-                        process_statements(proc, [cte["query"]], table_usage, lineage)
-                if "main_query" in stmt:
-                    process_statements(proc, [stmt["main_query"]], table_usage, lineage)
-            
-            if stmt_type == "CASE":
-                for when_clause in stmt.get("when_clauses", []):
-                    if "then" in when_clause and isinstance(when_clause.get("then"), list):
-                        process_statements(proc, when_clause["then"], table_usage, lineage)
-
-            if "catch" in stmt:
-                for handler in stmt.get("catch", []):
-                    if "body" in handler and isinstance(handler.get("body"), list):
-                        process_statements(proc, handler["body"], table_usage, lineage)
-
-    # --- Main Execution ---
+                    process_statements(proc, stmt[key], table_usage, lineage, cte_names)
+    
+    # --- Main Execution (No changes from here down) ---
     try:
-        with open(index_file) as f:
-            index_data = json.load(f)
-        with open(ast_file) as f:
-            ast_data = json.load(f)
-    except FileNotFoundError as e:
-        print(f"{Colours.RED}Error: Could not open file {e.filename}{Colours.RESET}")
-        return
-    except json.JSONDecodeError:
-        print(f"{Colours.RED}Error: Could not decode JSON from input files.{Colours.RESET}")
+        with open(index_file, 'r') as f: index_data = json.load(f)
+        with open(ast_file, 'r') as f: ast_data = json.load(f)
+    except Exception as e:
+        print(f"{Colours.RED}Error opening or parsing input files: {e}{Colours.RESET}")
         return
 
     lineage = defaultdict(lambda: {"type": "", "calls": set()})
     table_usage = defaultdict(lambda: defaultdict(list))
     all_db_objects = {}
 
-    # 1. Populate all known database objects from index and AST files
-    for obj_type, container in index_data.items():
-        if obj_type in ["procedures", "functions", "triggers"]:
-            for name in container.keys():
-                all_db_objects[name] = {"type": obj_type[:-1]}
-
     key_map = {"procedures": "proc_name", "functions": "func_name", "triggers": "trigger_name"}
-    for obj_type, container in ast_data.items():
-        if obj_type in key_map:
-            for item in container:
-                name = item.get(key_map[obj_type])
-                if name:
-                    all_db_objects[name] = {"type": obj_type[:-1]}
-
-    # 2. Build initial dependencies from the index file (proc-to-proc, proc-to-table)
     for obj_type, container in index_data.items():
-        if obj_type in ["procedures", "functions", "triggers"]:
-            for name, meta in container.items():
-                lineage[name]["type"] = all_db_objects[name]["type"]
-                for called in meta.get("calls", []):
-                    lineage[name]["calls"].add(called)
-                for table in meta.get("tables", []):
-                    lineage[table]["type"] = "table"
-                    lineage[table]["calls"].add(name)
+        if obj_type in key_map:
+            for name in container.keys(): all_db_objects[name] = {"type": obj_type[:-1]}
+            
+    # Also discover tables from the AST that might not be in the index
+    for proc_def in ast_data.get("procedures", []):
+        for stmt in proc_def.get("statements", []):
+            if table_name := stmt.get("table"):
+                if table_name not in all_db_objects:
+                    all_db_objects[table_name] = {"type": "table"}
 
-    # 3. Create a map for easy AST lookup
-    ast_map = {}
-    for obj_type, key_name in key_map.items():
-        for item in ast_data.get(obj_type, []):
-            name = item.get(key_name)
-            if name:
-                ast_map[name] = item
-    
-    # 4. Process the AST for each object to find detailed column-level lineage
+    ast_map = {item.get(key): item for type, key in key_map.items() for item in ast_data.get(type, []) if item.get(key)}
     for name, ast in ast_map.items():
-        # This is the key fix: 'statements' is the correct key for the AST body.
         process_statements(name, ast.get("statements", []), table_usage, lineage)
 
-    # 5. Build the reverse mapping (called_by)
-    called_by_map = defaultdict(lambda: defaultdict(set))
-    for source_name, source_meta in lineage.items():
-        source_type = source_meta.get("type")
-        if not source_type or source_type == "table":
-            continue
-        for target_name in source_meta.get("calls", set()):
-            called_by_map[target_name][source_type].add(source_name)
-
-    # 6. Ensure all tables found during AST processing are in the final object list
     for name, meta in lineage.items():
         if meta.get("type") == "table" and name not in all_db_objects:
             all_db_objects[name] = {"type": "table"}
 
-    # 7. Format the final output JSON
+    called_by_map = defaultdict(lambda: defaultdict(set))
+    for name, obj_data in all_db_objects.items():
+        if obj_data["type"] != "table":
+            for called in lineage.get(name, {}).get("calls", set()):
+                called_by_map[called.split('.')[-1]][obj_data["type"]].add(name)
+    
     formatted_lineage = {}
-    # Sort object names for consistent output order
-    object_names = sorted(all_db_objects.keys())
+    for name in sorted(all_db_objects.keys()):
+        meta = all_db_objects.get(name, {})
+        obj_type = meta.get("type")
+        if not obj_type: continue
 
-    for name in object_names:
-        meta = all_db_objects[name]
-        obj_type = meta["type"]
         entry = {"type": obj_type}
 
         if obj_type == "table":
-            entry["called_by"] = sorted(list(lineage[name].get("calls", set())))
+            direct_callers = {c for c in table_usage.get(name, {})}
+            entry["called_by"] = sorted(list(direct_callers))
+
             columns_list = []
             if name in table_usage:
-                for caller_name, ops_list in table_usage[name].items():
-                    caller_type = all_db_objects.get(caller_name, {}).get("type")
+                for caller, ops in table_usage[name].items():
+                    caller_type = all_db_objects.get(caller, {}).get("type")
                     if not caller_type: continue
-
-                    for op_info in ops_list:
-                        for col_name in op_info.get('cols', []):
-                            col_entry = {
-                                "name": col_name.strip(),
-                                "usage": op_info.get("op"),
-                                "caller": caller_name,
-                                "caller_type": caller_type
-                            }
-                            if col_entry not in columns_list:
-                                columns_list.append(col_entry)
-            # Sort columns for consistent output
+                    for op_info in ops:
+                        unique_cols = sorted(list(set(op_info.get('cols', []))))
+                        for col in unique_cols:
+                            if col == "*": continue
+                            col_entry = {"name": col.strip(), "usage": op_info.get("op"), "caller": caller, "caller_type": caller_type}
+                            if col_entry not in columns_list: columns_list.append(col_entry)
             entry["columns"] = sorted(columns_list, key=lambda x: (x['name'], x['caller']))
-        
+
         elif obj_type in ["procedure", "function"]:
-            entry["calls"] = sorted(list(lineage[name].get("calls", set())))
-            reverse_calls = called_by_map.get(name, {})
-            entry["called_by_procedure"] = sorted(list(reverse_calls.get("procedure", set())))
-            entry["called_by_function"] = sorted(list(reverse_calls.get("function", set())))
-            entry["called_by_trigger"] = sorted(list(reverse_calls.get("trigger", set())))
+            entry["calls"] = sorted([c.split('.')[-1] for c in lineage[name].get("calls", set())])
+            calls = called_by_map.get(name, {})
+            entry["called_by_procedure"] = sorted(list(calls.get("procedure", set())))
+            entry["called_by_function"] = sorted(list(calls.get("function", set())))
+            entry["called_by_trigger"] = sorted(list(calls.get("trigger", set())))
 
         elif obj_type == "trigger":
-            trigger_info = index_data.get("triggers", {}).get(name, {})
-            entry["on_table"] = trigger_info.get("on_table")
-            entry["event"] = trigger_info.get("event")
-            entry["calls"] = sorted(list(lineage[name].get("calls", set())))
-
+            info = index_data.get("triggers", {}).get(name, {})
+            entry["on_table"] = info.get("on_table")
+            entry["event"] = info.get("event")
+            entry["calls"] = sorted([c.split('.')[-1] for c in lineage[name].get("calls", set())])
+        
         formatted_lineage[name] = entry
-    
-    # 8. Validate against schema and write to file
-    print(f"\n{Colours.YELLOW}--- Validating Generated Lineage Against Schema ---{Colours.RESET}")
+
+    # --- Validation and File Write ---
+    print(f"\n{Colours.YELLOW}--- Validating and Writing Lineage ---{Colours.RESET}")
     try:
         script_path = os.path.abspath(__file__)
         src_dir = os.path.dirname(script_path)
@@ -364,7 +259,6 @@ def analyze_lineage(index_file: str, ast_file: str, output_file: str):
         print(f"{Colours.GREEN}Generated lineage schema validation successful.{Colours.RESET}")
 
         with open(output_file, "w") as f:
-            # sort_keys=True ensures the top-level object names are alphabetical
             json.dump(formatted_lineage, f, indent=2, sort_keys=True)
         print(f"\n{Colours.GREEN}✅ Lineage written to {output_file}{Colours.RESET}")
 

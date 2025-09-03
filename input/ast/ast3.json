@@ -1,71 +1,70 @@
 {
-  "tables": [
-    {
-      "table_name": "Inventory",
-      "columns": [
-        { "name": "ItemID", "type": "INT", "constraints": ["PRIMARY KEY"] },
-        { "name": "ItemName", "type": "VARCHAR(100)" },
-        { "name": "Quantity", "type": "INT" },
-        { "name": "ReorderLevel", "type": "INT" },
-        { "name": "LastUpdated", "type": "DATETIME", "default": "GETDATE()" }
-      ]
-    },
-    {
-      "table_name": "PurchaseOrders",
-      "columns": [
-        { "name": "POID", "type": "INT", "constraints": ["PRIMARY KEY"] },
-        { "name": "ItemID", "type": "INT" },
-        { "name": "Quantity", "type": "INT" },
-        { "name": "OrderDate", "type": "DATETIME", "default": "GETDATE()" },
-        { "name": "Status", "type": "VARCHAR(20)" }
-      ]
-    },
-    {
-      "table_name": "AuditTrail",
-      "columns": [
-        { "name": "AuditID", "type": "INT", "constraints": ["IDENTITY", "PRIMARY KEY"] },
-        { "name": "EventType", "type": "VARCHAR(50)" },
-        { "name": "Details", "type": "VARCHAR(200)" },
-        { "name": "CreatedAt", "type": "DATETIME", "default": "GETDATE()" }
-      ]
-    }
-  ],
   "procedures": [
     {
       "proc_name": "usp_WriteAudit",
       "params": [
-        { "name": "@eventType", "type": "VARCHAR(50)" },
-        { "name": "@details", "type": "VARCHAR(200)" }
+        {
+          "name": "@eventType",
+          "type": "VARCHAR(50)",
+          "mode": "IN"
+        },
+        {
+          "name": "@details",
+          "type": "VARCHAR(200)",
+          "mode": "IN"
+        }
       ],
-      "return_type": null,
+      "return_type": "VOID",
       "variables": [],
       "statements": [
         {
           "type": "INSERT",
           "table": "AuditTrail",
-          "columns": ["EventType", "Details"],
-          "values": ["@eventType", "@details"]
+          "columns": [
+            "EventType",
+            "Details"
+          ],
+          "values": [
+            "@eventType",
+            "@details"
+          ]
         }
       ]
     },
     {
       "proc_name": "usp_CreatePurchaseOrder",
       "params": [
-        { "name": "@itemId", "type": "INT" },
-        { "name": "@quantity", "type": "INT" }
+        {
+          "name": "@itemId",
+          "type": "INT",
+          "mode": "IN"
+        },
+        {
+          "name": "@quantity",
+          "type": "INT",
+          "mode": "IN"
+        }
       ],
-      "return_type": null,
+      "return_type": "VOID",
       "variables": [],
       "statements": [
         {
           "type": "INSERT",
           "table": "PurchaseOrders",
-          "columns": ["ItemID", "Quantity", "Status"],
-          "values": ["@itemId", "@quantity", "'OPEN'"]
+          "columns": [
+            "ItemID",
+            "Quantity",
+            "Status"
+          ],
+          "values": [
+            "@itemId",
+            "@quantity",
+            "'OPEN'"
+          ]
         },
         {
-          "type": "EXEC",
-          "proc_name": "usp_WriteAudit",
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_WriteAudit",
           "args": [
             "'PURCHASE_ORDER'",
             "'PO created for Item ' + CONVERT(VARCHAR, @itemId) + ', Qty ' + CONVERT(VARCHAR, @quantity)"
@@ -76,35 +75,63 @@
     {
       "proc_name": "usp_ReorderInventory",
       "params": [
-        { "name": "@itemId", "type": "INT" }
+        {
+          "name": "@itemId",
+          "type": "INT",
+          "mode": "IN"
+        }
       ],
-      "return_type": null,
+      "return_type": "VOID",
       "variables": [
-        { "name": "@qty", "type": "INT" },
-        { "name": "@reorderLevel", "type": "INT" }
+        {
+          "name": "@qty",
+          "type": "INT"
+        },
+        {
+          "name": "@reorderLevel",
+          "type": "INT"
+        }
       ],
       "statements": [
         {
-          "type": "SELECT",
-          "assignments": [
-            { "variable": "@qty", "expression": "Quantity" },
-            { "variable": "@reorderLevel", "expression": "ReorderLevel" }
+          "type": "SELECT_INTO",
+          "into_vars": [
+            "@qty",
+            "@reorderLevel"
           ],
-          "from": "Inventory",
-          "where": "ItemID = @itemId"
+          "query": {
+            "type": "SELECT",
+            "columns": [
+              "Quantity",
+              "ReorderLevel"
+            ],
+            "from": "Inventory",
+            "where": {
+              "op": "=",
+              "left": "ItemID",
+              "right": "@itemId"
+            }
+          }
         },
         {
           "type": "IF",
-          "condition": "@qty < @reorderLevel",
+          "condition": {
+            "op": "<",
+            "left": "@qty",
+            "right": "@reorderLevel"
+          },
           "then": [
             {
-              "type": "EXEC",
-              "proc_name": "usp_CreatePurchaseOrder",
-              "args": ["@itemId", "(@reorderLevel - @qty)"]
+              "type": "EXECUTE_PROCEDURE",
+              "name": "usp_CreatePurchaseOrder",
+              "args": [
+                "@itemId",
+                "(@reorderLevel - @qty)"
+              ]
             },
             {
-              "type": "EXEC",
-              "proc_name": "usp_WriteAudit",
+              "type": "EXECUTE_PROCEDURE",
+              "name": "usp_WriteAudit",
               "args": [
                 "'REORDER'",
                 "'Item ' + CONVERT(VARCHAR, @itemId) + ' triggered reorder.'"
@@ -113,8 +140,8 @@
           ],
           "else": [
             {
-              "type": "EXEC",
-              "proc_name": "usp_WriteAudit",
+              "type": "EXECUTE_PROCEDURE",
+              "name": "usp_WriteAudit",
               "args": [
                 "'REORDER_CHECK'",
                 "'Item ' + CONVERT(VARCHAR, @itemId) + ' sufficient stock.'"
@@ -127,33 +154,47 @@
     {
       "proc_name": "usp_ProcessInventoryUpdate",
       "params": [
-        { "name": "@itemId", "type": "INT" },
-        { "name": "@adjustment", "type": "INT" }
+        {
+          "name": "@itemId",
+          "type": "INT",
+          "mode": "IN"
+        },
+        {
+          "name": "@adjustment",
+          "type": "INT",
+          "mode": "IN"
+        }
       ],
-      "return_type": null,
+      "return_type": "VOID",
       "variables": [],
       "statements": [
         {
           "type": "UPDATE",
           "table": "Inventory",
-          "set": [
-            { "column": "Quantity", "value": "Quantity + @adjustment" },
-            { "column": "LastUpdated", "value": "GETDATE()" }
-          ],
-          "where": "ItemID = @itemId"
+          "set": {
+            "Quantity": "Quantity + @adjustment",
+            "LastUpdated": "GETDATE()"
+          },
+          "where": {
+            "op": "=",
+            "left": "ItemID",
+            "right": "@itemId"
+          }
         },
         {
-          "type": "EXEC",
-          "proc_name": "usp_WriteAudit",
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_WriteAudit",
           "args": [
             "'INVENTORY_UPDATE'",
             "'Item ' + CONVERT(VARCHAR, @itemId) + ' adjusted by ' + CONVERT(VARCHAR, @adjustment)"
           ]
         },
         {
-          "type": "EXEC",
-          "proc_name": "usp_ReorderInventory",
-          "args": ["@itemId"]
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_ReorderInventory",
+          "args": [
+            "@itemId"
+          ]
         }
       ]
     }
@@ -162,52 +203,94 @@
     {
       "func_name": "fn_GetStockLevelWithAudit",
       "params": [
-        { "name": "@itemId", "type": "INT" }
+        {
+          "name": "@itemId",
+          "type": "INT",
+          "mode": "IN"
+        }
       ],
       "return_type": "INT",
-      "variables": [{ "name": "@qty", "type": "INT" }],
+      "variables": [
+        {
+          "name": "@qty",
+          "type": "INT"
+        }
+      ],
       "statements": [
         {
-          "type": "SELECT",
-          "assignments": [
-            { "variable": "@qty", "expression": "Quantity" }
+          "type": "SELECT_INTO",
+          "into_vars": [
+            "@qty"
           ],
-          "from": "Inventory",
-          "where": "ItemID = @itemId"
+          "query": {
+            "type": "SELECT",
+            "columns": [
+              "Quantity"
+            ],
+            "from": "Inventory",
+            "where": {
+              "op": "=",
+              "left": "ItemID",
+              "right": "@itemId"
+            }
+          }
         },
         {
-          "type": "EXEC",
-          "proc_name": "usp_WriteAudit",
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_WriteAudit",
           "args": [
             "'FUNCTION_CALL'",
             "'fn_GetStockLevelWithAudit called for Item ' + CONVERT(VARCHAR, @itemId)"
           ]
         },
-        { "type": "RETURN", "expression": "@qty" }
+        {
+          "type": "RETURN",
+          "value": "@qty"
+        }
       ]
     },
     {
       "func_name": "fn_CheckStockHealth",
-      "params": [{ "name": "@itemId", "type": "INT" }],
+      "params": [
+        {
+          "name": "@itemId",
+          "type": "INT",
+          "mode": "IN"
+        }
+      ],
       "return_type": "VARCHAR(20)",
       "variables": [
-        { "name": "@qty", "type": "INT" },
-        { "name": "@status", "type": "VARCHAR(20)" }
+        {
+          "name": "@qty",
+          "type": "INT"
+        },
+        {
+          "name": "@status",
+          "type": "VARCHAR(20)"
+        }
       ],
       "statements": [
         {
           "type": "SET",
-          "variable": "@qty",
+          "name": "@qty",
           "value": "dbo.fn_GetStockLevelWithAudit(@itemId)"
         },
         {
           "type": "IF",
-          "condition": "@qty < 10",
+          "condition": {
+            "op": "<",
+            "left": "@qty",
+            "right": "10"
+          },
           "then": [
-            { "type": "SET", "variable": "@status", "value": "'LOW'" },
             {
-              "type": "EXEC",
-              "proc_name": "usp_WriteAudit",
+              "type": "SET",
+              "name": "@status",
+              "value": "'LOW'"
+            },
+            {
+              "type": "EXECUTE_PROCEDURE",
+              "name": "usp_WriteAudit",
               "args": [
                 "'STOCK_HEALTH'",
                 "'Item ' + CONVERT(VARCHAR, @itemId) + ' flagged as LOW'"
@@ -215,10 +298,14 @@
             }
           ],
           "else": [
-            { "type": "SET", "variable": "@status", "value": "'OK'" },
             {
-              "type": "EXEC",
-              "proc_name": "usp_WriteAudit",
+              "type": "SET",
+              "name": "@status",
+              "value": "'OK'"
+            },
+            {
+              "type": "EXECUTE_PROCEDURE",
+              "name": "usp_WriteAudit",
               "args": [
                 "'STOCK_HEALTH'",
                 "'Item ' + CONVERT(VARCHAR, @itemId) + ' flagged as OK'"
@@ -226,59 +313,112 @@
             }
           ]
         },
-        { "type": "RETURN", "expression": "@status" }
+        {
+          "type": "RETURN",
+          "value": "@status"
+        }
       ]
     },
     {
       "func_name": "fn_GetInventoryReport",
-      "params": [{ "name": "@itemId", "type": "INT" }],
+      "params": [
+        {
+          "name": "@itemId",
+          "type": "INT",
+          "mode": "IN"
+        }
+      ],
       "return_type": "VARCHAR(200)",
       "variables": [
-        { "name": "@qty", "type": "INT" },
-        { "name": "@health", "type": "VARCHAR(20)" },
-        { "name": "@report", "type": "VARCHAR(200)" }
+        {
+          "name": "@qty",
+          "type": "INT"
+        },
+        {
+          "name": "@health",
+          "type": "VARCHAR(20)"
+        },
+        {
+          "name": "@report",
+          "type": "VARCHAR(200)"
+        }
       ],
       "statements": [
-        { "type": "SET", "variable": "@qty", "value": "dbo.fn_GetStockLevelWithAudit(@itemId)" },
-        { "type": "SET", "variable": "@health", "value": "dbo.fn_CheckStockHealth(@itemId)" },
         {
           "type": "SET",
-          "variable": "@report",
+          "name": "@qty",
+          "value": "dbo.fn_GetStockLevelWithAudit(@itemId)"
+        },
+        {
+          "type": "SET",
+          "name": "@health",
+          "value": "dbo.fn_CheckStockHealth(@itemId)"
+        },
+        {
+          "type": "SET",
+          "name": "@report",
           "value": "'Item ' + CONVERT(VARCHAR, @itemId) + ' | Qty: ' + CONVERT(VARCHAR, @qty) + ' | Health: ' + @health"
         },
         {
-          "type": "EXEC",
-          "proc_name": "usp_WriteAudit",
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_WriteAudit",
           "args": [
             "'REPORT'",
             "'Report generated for Item ' + CONVERT(VARCHAR, @itemId)"
           ]
         },
-        { "type": "RETURN", "expression": "@report" }
+        {
+          "type": "RETURN",
+          "value": "@report"
+        }
       ]
     }
   ],
   "triggers": [
     {
       "trigger_name": "trg_AfterInventoryUpdate",
-      "table": "Inventory",
-      "timing": "AFTER",
-      "event": "UPDATE",
-      "variables": [
-        { "name": "@itemId", "type": "INT" },
-        { "name": "@report", "type": "VARCHAR(200)" }
-      ],
+      "on_table": "Inventory",
+      "event": "AFTER UPDATE",
       "statements": [
         {
-          "type": "SELECT",
-          "assignments": [{ "variable": "@itemId", "expression": "ItemID" }],
-          "from": "INSERTED"
+          "type": "DECLARE",
+          "name": "@itemId",
+          "value": "INT"
         },
-        { "type": "EXEC", "proc_name": "usp_ProcessInventoryUpdate", "args": ["@itemId", "0"] },
-        { "type": "SET", "variable": "@report", "value": "dbo.fn_GetInventoryReport(@itemId)" },
         {
-          "type": "EXEC",
-          "proc_name": "usp_WriteAudit",
+          "type": "DECLARE",
+          "name": "@report",
+          "value": "VARCHAR(200)"
+        },
+        {
+          "type": "SELECT_INTO",
+          "into_vars": [
+            "@itemId"
+          ],
+          "query": {
+            "type": "SELECT",
+            "columns": [
+              "ItemID"
+            ],
+            "from": "INSERTED"
+          }
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_ProcessInventoryUpdate",
+          "args": [
+            "@itemId",
+            "0"
+          ]
+        },
+        {
+          "type": "SET",
+          "name": "@report",
+          "value": "dbo.fn_GetInventoryReport(@itemId)"
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_WriteAudit",
           "args": [
             "'TRIGGER'",
             "'Inventory updated for Item ' + CONVERT(VARCHAR, @itemId) + ' | ' + @report"
@@ -288,35 +428,55 @@
     },
     {
       "trigger_name": "trg_AfterPurchaseOrderInsert",
-      "table": "PurchaseOrders",
-      "timing": "AFTER",
-      "event": "INSERT",
-      "variables": [
-        { "name": "@itemId", "type": "INT" },
-        { "name": "@qty", "type": "INT" },
-        { "name": "@status", "type": "VARCHAR(20)" }
-      ],
+      "on_table": "PurchaseOrders",
+      "event": "AFTER INSERT",
       "statements": [
         {
-          "type": "SELECT",
-          "assignments": [
-            { "variable": "@itemId", "expression": "ItemID" },
-            { "variable": "@qty", "expression": "Quantity" }
-          ],
-          "from": "INSERTED"
+          "type": "DECLARE",
+          "name": "@itemId",
+          "value": "INT"
         },
         {
-          "type": "EXEC",
-          "proc_name": "usp_WriteAudit",
+          "type": "DECLARE",
+          "name": "@qty",
+          "value": "INT"
+        },
+        {
+          "type": "SELECT_INTO",
+          "into_vars": [
+            "@itemId",
+            "@qty"
+          ],
+          "query": {
+            "type": "SELECT",
+            "columns": [
+              "ItemID",
+              "Quantity"
+            ],
+            "from": "INSERTED"
+          }
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_WriteAudit",
           "args": [
             "'PO_TRIGGER'",
             "'Trigger fired for new PO of Item ' + CONVERT(VARCHAR, @itemId) + ', Qty ' + CONVERT(VARCHAR, @qty)"
           ]
         },
-        { "type": "SET", "variable": "@status", "value": "dbo.fn_CheckStockHealth(@itemId)" },
         {
-          "type": "EXEC",
-          "proc_name": "usp_WriteAudit",
+          "type": "DECLARE",
+          "name": "@status",
+          "value": "VARCHAR(20)"
+        },
+        {
+          "type": "SET",
+          "name": "@status",
+          "value": "dbo.fn_CheckStockHealth(@itemId)"
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_WriteAudit",
           "args": [
             "'PO_TRIGGER_HEALTH'",
             "'Item ' + CONVERT(VARCHAR, @itemId) + ' health status in PO trigger: ' + @status"
@@ -326,3 +486,4 @@
     }
   ]
 }
+

@@ -7,6 +7,18 @@
       {
         "caller": "AcmeERP.usp_CalculateFifoCost",
         "caller_type": "procedure",
+        "name": "Direction",
+        "usage": "read"
+      },
+      {
+        "caller": "AcmeERP.usp_CalculateFifoCost",
+        "caller_type": "procedure",
+        "name": "MovementDate",
+        "usage": "read"
+      },
+      {
+        "caller": "AcmeERP.usp_CalculateFifoCost",
+        "caller_type": "procedure",
         "name": "MovementID",
         "usage": "read"
       },
@@ -25,12 +37,6 @@
       {
         "caller": "AcmeERP.usp_CalculateFifoCost",
         "caller_type": "procedure",
-        "name": "SUM(Quantity) OVER (PARTITION BY ProductID ORDER BY MovementDate ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS RunningTotal",
-        "usage": "read"
-      },
-      {
-        "caller": "AcmeERP.usp_CalculateFifoCost",
-        "caller_type": "procedure",
         "name": "UnitCost",
         "usage": "read"
       }
@@ -43,20 +49,6 @@
     "called_by_trigger": [],
     "calls": [],
     "type": "procedure"
-  },
-  "CTE_FIFO": {
-    "called_by": [
-      "AcmeERP.usp_CalculateFifoCost"
-    ],
-    "columns": [
-      {
-        "caller": "AcmeERP.usp_CalculateFifoCost",
-        "caller_type": "procedure",
-        "name": "AVG(UnitCost) AS FifoCostEstimate",
-        "usage": "read"
-      }
-    ],
-    "type": "table"
   },
   "OrderAudit": {
     "called_by": [
@@ -92,7 +84,13 @@
       {
         "caller": "sp_process_order",
         "caller_type": "procedure",
-        "name": "SUM(Amount)",
+        "name": "Amount",
+        "usage": "read"
+      },
+      {
+        "caller": "sp_process_order",
+        "caller_type": "procedure",
+        "name": "OrderID",
         "usage": "read"
       }
     ],
@@ -102,7 +100,32 @@
     "called_by": [
       "sp_print_customer_orders"
     ],
-    "columns": [],
+    "columns": [
+      {
+        "caller": "sp_print_customer_orders",
+        "caller_type": "procedure",
+        "name": "CustomerID",
+        "usage": "read"
+      },
+      {
+        "caller": "sp_print_customer_orders",
+        "caller_type": "procedure",
+        "name": "OrderDate",
+        "usage": "read"
+      },
+      {
+        "caller": "sp_print_customer_orders",
+        "caller_type": "procedure",
+        "name": "OrderID",
+        "usage": "read"
+      },
+      {
+        "caller": "sp_print_customer_orders",
+        "caller_type": "procedure",
+        "name": "Total",
+        "usage": "read"
+      }
+    ],
     "type": "table"
   },
   "Sales": {
@@ -113,7 +136,19 @@
       {
         "caller": "sp_calculate_bonus",
         "caller_type": "procedure",
-        "name": "SUM(Amount)",
+        "name": "Amount",
+        "usage": "read"
+      },
+      {
+        "caller": "sp_calculate_bonus",
+        "caller_type": "procedure",
+        "name": "EmployeeID",
+        "usage": "read"
+      },
+      {
+        "caller": "sp_calculate_bonus",
+        "caller_type": "procedure",
+        "name": "SaleDate",
         "usage": "read"
       }
     ],
