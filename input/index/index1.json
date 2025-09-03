@@ -1,113 +1,37 @@
 {
-  "AcmeERP.usp_CalculateFifoCost": {
-    "params": [
-      {
-        "name": "@ProductID",
-        "type": "INTEGER"
-      },
-      {
-        "name": "@QuantityRequested",
-        "type": "INTEGER"
-      }
-    ],
-    "calls": [],
-    "tables": [
-      "CTE_FIFO",
-      "AcmeERP.StockMovements"
-    ]
+  "procedures": {
+    "AcmeERP.usp_CalculateFifoCost": {
+      "params": [
+        { "name": "@ProductID", "type": "INT" },
+        { "name": "@QuantityRequested", "type": "INT" }
+      ],
+      "calls": [],
+      "tables": ["AcmeERP.StockMovements"]
+    },
+    "sp_process_order": {
+      "params": [
+        { "name": "@OrderID", "type": "INT" },
+        { "name": "@Threshold", "type": "NUMERIC(10,2)" }
+      ],
+      "calls": [],
+      "tables": ["OrderItems", "OrderAudit"]
+    },
+    "sp_print_customer_orders": {
+      "params": [
+        { "name": "@CustomerID", "type": "INT" }
+      ],
+      "calls": [],
+      "tables": ["Orders"]
+    },
+    "sp_calculate_bonus": {
+      "params": [
+        { "name": "@EmployeeID", "type": "INT" },
+        { "name": "@Year", "type": "INT" }
+      ],
+      "calls": [],
+      "tables": ["Sales"]
+    }
   },
-  "AcmeERP.usp_ProcessFullPayrollCycle": {
-    "params": [
-      {
-        "name": "@PayPeriodStart",
-        "type": "DATE"
-      },
-      {
-        "name": "@PayPeriodEnd",
-        "type": "DATE"
-      }
-    ],
-    "calls": [],
-    "tables": [
-      "AcmeERP.ExchangeRates",
-      "AcmeERP.PayrollLogs",
-      "#PayrollCalc"
-    ]
-  },
-  "AcmeERP.usp_ConvertToBase": {
-    "params": [
-      {
-        "name": "@CurrencyCode",
-        "type": "CHAR"
-      },
-      {
-        "name": "@Amount",
-        "type": "NUMERIC"
-      },
-      {
-        "name": "@ConversionDate",
-        "type": "DATE"
-      }
-    ],
-    "calls": [],
-    "tables": [
-      "AcmeERP.ExchangeRates"
-    ]
-  },
-  "sp_sum_client_orders": {
-    "params": [
-      {
-        "name": "@client_id",
-        "type": "INTEGER"
-      },
-      {
-        "name": "@from_date",
-        "type": "DATE"
-      },
-      {
-        "name": "@to_date",
-        "type": "DATE"
-      }
-    ],
-    "calls": [],
-    "tables": [
-      "client_orders"
-    ]
-  },
-  "log_hr_employees": {
-    "params": [],
-    "calls": [],
-    "tables": [
-      "employee_log",
-      "employees"
-    ]
-  },
-  "test1": {
-    "params": [
-      {
-        "name": "@client_id",
-        "type": "INTEGER"
-      },
-      {
-        "name": "@from_date",
-        "type": "DATE"
-      },
-      {
-        "name": "@to_date",
-        "type": "DATE"
-      }
-    ],
-    "calls": [],
-    "tables": [
-      "client_orders"
-    ]
-  },
-  "sp_update_inventory": {
-    "params": [],
-    "calls": [],
-    "tables": [
-      "products",
-      "inventory"
-    ]
-  }
+  "functions": {},
+  "triggers": {}
 }

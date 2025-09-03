@@ -102,12 +102,6 @@
                   "boolean",
                   "null"
                 ]
-              },
-              "raw_type": {
-                "type": "string"
-              },
-              "precision": {
-                "type": "string"
               }
             },
             "additionalProperties": false
@@ -190,12 +184,6 @@
                     "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\)|MONEY|SMALLMONEY)$"
                   }
                 ]
-              },
-              "raw_type": {
-                "type": "string"
-              },
-              "precision": {
-                "type": "string"
               },
               "default": {
                 "type": [
@@ -294,12 +282,6 @@
                   "boolean",
                   "null"
                 ]
-              },
-              "raw_type": {
-                "type": "string"
-              },
-              "precision": {
-                "type": "string"
               }
             },
             "additionalProperties": false
@@ -382,12 +364,6 @@
                     "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\)|MONEY|SMALLMONEY)$"
                   }
                 ]
-              },
-              "raw_type": {
-                "type": "string"
-              },
-              "precision": {
-                "type": "string"
               },
               "default": {
                 "type": [
@@ -550,11 +526,85 @@
               "$ref": "#/definitions/expression"
             },
             "right": {
-              "$ref": "#/definitions/expression"
+              "oneOf": [
+                {
+                  "$ref": "#/definitions/expression"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/expression"
+                  }
+                }
+              ]
             }
           }
         }
       ]
+    },
+    "catch_block": {
+      "type": "object",
+      "properties": {
+        "exception": {
+          "type": "string"
+        },
+        "body": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/statement"
+          }
+        }
+      },
+      "required": [
+        "exception",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    "select_query": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "SELECT"
+          ]
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/definitions/column_detail"
+              }
+            ]
+          }
+        },
+        "from": {
+          "type": "string"
+        },
+        "where": {
+          "$ref": "#/definitions/expression"
+        },
+        "order_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "columns",
+        "from"
+      ],
+      "additionalProperties": false
     },
     "statement": {
       "type": "object",
@@ -609,7 +659,17 @@
           "$ref": "#/definitions/expression"
         },
         "query": {
-          "type": "string"
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/select_query"
+            }
+          ]
+        },
+        "select_statement": {
+          "$ref": "#/definitions/select_query"
         },
         "into_vars": {
           "type": "array",
@@ -664,12 +724,6 @@
                           "MONEY",
                           "SMALLMONEY"
                         ]
-                      },
-                      "raw_type": {
-                        "type": "string"
-                      },
-                      "precision": {
-                        "type": "string"
                       }
                     },
                     "additionalProperties": false
@@ -704,7 +758,7 @@
                     "type": "string"
                   },
                   {
-                    "type": "object"
+                    "$ref": "#/definitions/select_query"
                   }
                 ]
               }
@@ -718,7 +772,7 @@
               "type": "string"
             },
             {
-              "type": "object"
+              "$ref": "#/definitions/select_query"
             }
           ]
         },
@@ -782,12 +836,6 @@
                         "pattern": "^(INT|BIGINT|SMALLINT|TINYINT|VARCHAR\\(\\d+\\)|CHAR\\(\\d+\\)|NVARCHAR\\(\\d+\\)|UNIVARCHAR\\(\\d+\\)|TEXT|IMAGE|BIT|DATE|DATETIME|SMALLDATETIME|TIME|FLOAT|NUMERIC\\(\\d+(,\\d+)?\\)|DECIMAL\\(\\d+(,\\d+)?\\)|MONEY|SMALLMONEY)$"
                       }
                     ]
-                  },
-                  "raw_type": {
-                    "type": "string"
-                  },
-                  "precision": {
-                    "type": "string"
                   }
                 },
                 "additionalProperties": false
@@ -832,6 +880,45 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/column_detail"
+          }
+        },
+        "from": {
+          "type": "string"
+        },
+        "where": {
+          "$ref": "#/definitions/expression"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/expression"
+          }
+        },
+        "message": {
+          "$ref": "#/definitions/expression"
+        },
+        "level": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "state": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "catch": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/catch_block"
+          }
+        },
+        "order_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         }
       },

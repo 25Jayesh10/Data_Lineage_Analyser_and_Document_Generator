@@ -1,0 +1,349 @@
+{
+  "procedures": [
+    {
+      "proc_name": "AcmeERP.usp_LogAudit",
+      "params": [
+        { "name": "@Entity", "type": "VARCHAR(50)", "mode": "IN" },
+        { "name": "@EntityID", "type": "INT", "mode": "IN" },
+        { "name": "@Message", "type": "VARCHAR(200)", "mode": "IN" }
+      ],
+      "return_type": "VOID",
+      "variables": [],
+      "statements": [
+        {
+          "type": "INSERT",
+          "table": "AuditLog",
+          "columns": ["Entity", "EntityID", "Message", "CreatedAt"],
+          "query": "INSERT INTO AuditLog(Entity, EntityID, Message, CreatedAt) VALUES (@Entity, @EntityID, @Message, GETDATE())"
+        }
+      ]
+    },
+    {
+      "proc_name": "AcmeERP.usp_CalculateFifoCost",
+      "params": [
+        { "name": "@ProductID", "type": "INT", "mode": "IN" },
+        { "name": "@QuantityRequested", "type": "INT", "mode": "IN" }
+      ],
+      "return_type": "VOID",
+      "variables": [],
+      "statements": [
+        {
+          "type": "WITH_CTE",
+          "cte_list": [
+            {
+              "name": "CTE_FIFO",
+              "query": "SELECT MovementID, ProductID, Quantity, UnitCost, SUM(Quantity) OVER (PARTITION BY ProductID ORDER BY MovementDate ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS RunningTotal FROM AcmeERP.StockMovements WHERE ProductID = @ProductID AND Direction = 'IN'"
+            }
+          ],
+          "main_query": "SELECT AVG(UnitCost) AS FifoCostEstimate FROM CTE_FIFO WHERE RunningTotal <= @QuantityRequested"
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "AcmeERP.usp_LogAudit",
+          "args": [
+            "'Product'",
+            "@ProductID",
+            "'FIFO cost calculated'"
+          ]
+        }
+      ]
+    },
+    {
+      "proc_name": "AcmeERP.usp_ProcessOrder",
+      "params": [
+        { "name": "@OrderID", "type": "INT", "mode": "IN" },
+        { "name": "@Threshold", "type": "NUMERIC(10,2)", "mode": "IN" }
+      ],
+      "return_type": "VOID",
+      "variables": [
+        { "name": "@OrderTotal", "type": "NUMERIC(12,2)" },
+        { "name": "@Status", "type": "VARCHAR(20)" }
+      ],
+      "statements": [
+        {
+          "type": "SET",
+          "name": "@OrderTotal",
+          "value": "AcmeERP.fn_GetOrderTotalWithTax(@OrderID)"
+        },
+        {
+          "type": "IF",
+          "condition": "@OrderTotal = 0",
+          "then": [
+            {
+              "type": "SET",
+              "name": "@Status",
+              "value": "'Not Found'"
+            }
+          ],
+          "else": [
+            {
+              "type": "IF",
+              "condition": "@OrderTotal >= @Threshold",
+              "then": [
+                { "type": "SET", "name": "@Status", "value": "'High Value'" }
+              ],
+              "else": [
+                { "type": "SET", "name": "@Status", "value": "'Normal'" }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "INSERT",
+          "table": "OrderAudit",
+          "columns": ["OrderID", "Status", "CheckedAt"],
+          "query": "INSERT INTO OrderAudit (OrderID, Status, CheckedAt) VALUES (@OrderID, @Status, GETDATE())"
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "AcmeERP.usp_LogAudit",
+          "args": [
+            "'Order'",
+            "@OrderID",
+            "'Order processed with status: ' + @Status"
+          ]
+        },
+        {
+          "type": "SELECT",
+          "main_query": "SELECT @OrderID AS OrderID, @OrderTotal AS Total, @Status AS Status"
+        }
+      ]
+    },
+    {
+      "proc_name": "AcmeERP.usp_PrintCustomerOrders",
+      "params": [
+        { "name": "@CustomerID", "type": "INT", "mode": "IN" }
+      ],
+      "return_type": "VOID",
+      "variables": [
+        { "name": "@OrderID", "type": "INT" },
+        { "name": "@OrderDate", "type": "DATETIME" },
+        { "name": "@Total", "type": "NUMERIC(12,2)" }
+      ],
+      "statements": [
+        {
+          "type": "DECLARE_CURSOR",
+          "cursor_name": "order_cursor",
+          "query": "SELECT OrderID, OrderDate, dbo.fn_GetOrderTotalWithTax(OrderID) AS Total FROM Orders WHERE CustomerID = @CustomerID"
+        },
+        {
+          "type": "OPEN_CURSOR",
+          "cursor_name": "order_cursor"
+        },
+        {
+          "type": "FETCH_CURSOR",
+          "cursor_name": "order_cursor",
+          "fetch_into": ["@OrderID", "@OrderDate", "@Total"]
+        },
+        {
+          "type": "WHILE",
+          "condition": "@@FETCH_STATUS = 0",
+          "body": [
+            {
+              "type": "RAW_SQL",
+              "query": "PRINT 'Order: ' + CAST(@OrderID AS VARCHAR) + ', Date: ' + CAST(@OrderDate AS VARCHAR) + ', Total (with tax): ' + CAST(@Total AS VARCHAR)"
+            },
+            {
+              "type": "FETCH_CURSOR",
+              "cursor_name": "order_cursor",
+              "fetch_into": ["@OrderID", "@OrderDate", "@Total"]
+            }
+          ]
+        },
+        {
+          "type": "CLOSE_CURSOR",
+          "cursor_name": "order_cursor"
+        },
+        {
+          "type": "DEALLOCATE_CURSOR",
+          "cursor_name": "order_cursor"
+        }
+      ]
+    },
+    {
+      "proc_name": "AcmeERP.usp_CalculateBonus",
+      "params": [
+        { "name": "@EmployeeID", "type": "INT", "mode": "IN" },
+        { "name": "@Year", "type": "INT", "mode": "IN" }
+      ],
+      "return_type": "NUMERIC(12,2)",
+      "variables": [
+        { "name": "@Sales", "type": "NUMERIC(12,2)" },
+        { "name": "@Bonus", "type": "NUMERIC(12,2)" }
+      ],
+      "statements": [
+        {
+          "type": "SELECT_INTO",
+          "query": "SELECT SUM(Amount) FROM Sales WHERE EmployeeID = @EmployeeID AND YEAR(SaleDate) = @Year",
+          "into_vars": ["@Sales"]
+        },
+        {
+          "type": "IF",
+          "condition": "@Sales IS NULL",
+          "then": [
+            {
+              "type": "RAISERROR",
+              "expression": "RAISERROR('No sales found for employee', 16, 1)"
+            },
+            {
+              "type": "RETURN",
+              "value": 0
+            }
+          ],
+          "else": [
+            {
+              "type": "IF",
+              "condition": "@Sales > 100000",
+              "then": [
+                { "type": "SET", "name": "@Bonus", "value": "@Sales * 0.10" }
+              ],
+              "else": [
+                {
+                  "type": "IF",
+                  "condition": "@Sales > 50000",
+                  "then": [
+                    { "type": "SET", "name": "@Bonus", "value": "@Sales * 0.05" }
+                  ],
+                  "else": [
+                    { "type": "SET", "name": "@Bonus", "value": 0 }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "EXECUTE_PROCEDURE",
+              "name": "AcmeERP.usp_LogAudit",
+              "args": [
+                "'Employee'",
+                "@EmployeeID",
+                "'Bonus calculated'"
+              ]
+            },
+            {
+              "type": "RETURN",
+              "value": "@Bonus"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "func_name": "AcmeERP.fn_CalculateTax",
+      "params": [
+        { "name": "@Amount", "type": "NUMERIC(12,2)", "mode": "IN" }
+      ],
+      "return_type": "NUMERIC(12,2)",
+      "variables": [],
+      "statements": [
+        {
+          "type": "RETURN",
+          "value": "@Amount * 0.15"
+        }
+      ]
+    },
+    {
+      "func_name": "AcmeERP.fn_GetOrderTotalWithTax",
+      "params": [
+        { "name": "@OrderID", "type": "INT", "mode": "IN" }
+      ],
+      "return_type": "NUMERIC(12,2)",
+      "variables": [
+        { "name": "@BaseTotal", "type": "NUMERIC(12,2)" },
+        { "name": "@WithTax", "type": "NUMERIC(12,2)" }
+      ],
+      "statements": [
+        {
+          "type": "SELECT_INTO",
+          "query": "SELECT SUM(Amount) FROM OrderItems WHERE OrderID = @OrderID",
+          "into_vars": ["@BaseTotal"]
+        },
+        {
+          "type": "IF",
+          "condition": "@BaseTotal IS NULL",
+          "then": [
+            {
+              "type": "RETURN",
+              "value": 0
+            }
+          ],
+          "else": [
+            {
+              "type": "SET",
+              "name": "@WithTax",
+              "value": "@BaseTotal + AcmeERP.fn_CalculateTax(@BaseTotal)"
+            },
+            {
+              "type": "RETURN",
+              "value": "@WithTax"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "func_name": "AcmeERP.fn_GetHighValueOrders",
+      "params": [
+        { "name": "@Threshold", "type": "NUMERIC(12,2)", "mode": "IN" }
+      ],
+      "return_type": "VOID",
+      "variables": [],
+      "statements": [
+        {
+          "type": "SELECT",
+          "main_query": "SELECT o.OrderID, o.CustomerID, o.OrderDate, SUM(oi.Amount) AS Total FROM Orders o JOIN OrderItems oi ON o.OrderID = oi.OrderID GROUP BY o.OrderID, o.CustomerID, o.OrderDate HAVING SUM(oi.Amount) > @Threshold"
+        }
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "trigger_name": "trg_AfterInsertOrder",
+      "on_table": "Orders",
+      "event": "AFTER INSERT",
+      "statements": [
+        { "type": "DECLARE", "name": "@OrderID", "value": null },
+        { "type": "DECLARE", "name": "@TotalWithTax", "value": null },
+        {
+          "type": "SELECT_INTO",
+          "query": "SELECT OrderID FROM INSERTED",
+          "into_vars": ["@OrderID"]
+        },
+        {
+          "type": "SET",
+          "name": "@TotalWithTax",
+          "value": "AcmeERP.fn_GetOrderTotalWithTax(@OrderID)"
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "AcmeERP.usp_LogAudit",
+          "args": [
+            "'Order'",
+            "@OrderID",
+            "'New order inserted. Total with tax: ' + CAST(@TotalWithTax AS VARCHAR)"
+          ]
+        }
+      ]
+    },
+    {
+      "trigger_name": "trg_AfterStockMovement",
+      "on_table": "StockMovements",
+      "event": "AFTER INSERT",
+      "statements": [
+        { "type": "DECLARE", "name": "@ProductID", "value": null },
+        { "type": "DECLARE", "name": "@Qty", "value": null },
+        {
+          "type": "SELECT_INTO",
+          "query": "SELECT ProductID, Quantity FROM INSERTED",
+          "into_vars": ["@ProductID", "@Qty"]
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "AcmeERP.usp_CalculateFifoCost",
+          "args": ["@ProductID", "@Qty"]
+        }
+      ]
+    }
+  ]
+}

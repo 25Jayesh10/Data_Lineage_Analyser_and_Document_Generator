@@ -1,0 +1,420 @@
+{
+  "procedures": [
+    {
+      "proc_name": "usp_LogEvent",
+      "params": [
+        { "name": "@eventType", "type": "VARCHAR(50)", "mode": "IN" },
+        { "name": "@details", "type": "VARCHAR(500)", "mode": "IN" }
+      ],
+      "return_type": "VOID",
+      "variables": [],
+      "statements": [
+        {
+          "type": "INSERT",
+          "table": "AuditTrail",
+          "columns": ["EventType", "Details"],
+          "query": "INSERT INTO AuditTrail(EventType, Details) VALUES(@eventType, @details)"
+        }
+      ]
+    },
+    {
+      "proc_name": "usp_CreateShipment",
+      "params": [
+        { "name": "@orderId", "type": "INT", "mode": "IN" },
+        { "name": "@carrier", "type": "VARCHAR(50)", "mode": "IN" }
+      ],
+      "return_type": "VOID",
+      "variables": [],
+      "statements": [
+        {
+          "type": "INSERT",
+          "table": "Shipments",
+          "columns": ["OrderID", "ShipDate", "Carrier"],
+          "query": "INSERT INTO Shipments(OrderID, ShipDate, Carrier) VALUES(@orderId, GETDATE(), @carrier)"
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_LogEvent",
+          "args": [
+            "'SHIPMENT'",
+            "'Shipment created for Order ' + CONVERT(VARCHAR, @orderId)"
+          ]
+        }
+      ]
+    },
+    {
+      "proc_name": "usp_FinalizeOrder",
+      "params": [
+        { "name": "@orderId", "type": "INT", "mode": "IN" }
+      ],
+      "return_type": "VOID",
+      "variables": [],
+      "statements": [
+        {
+          "type": "UPDATE",
+          "table": "Orders",
+          "set": { "Status": "'FINALIZED'" },
+          "condition": "OrderID = @orderId"
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_CreateShipment",
+          "args": ["@orderId", "'FedEx'"]
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_LogEvent",
+          "args": [
+            "'ORDER'",
+            "'Order ' + CONVERT(VARCHAR, @orderId) + ' finalized and shipment created'"
+          ]
+        }
+      ]
+    },
+    {
+      "proc_name": "usp_ValidateCustomerCredit",
+      "params": [
+        { "name": "@customerId", "type": "INT", "mode": "IN" },
+        { "name": "@amount", "type": "DECIMAL(10,2)", "mode": "IN" }
+      ],
+      "return_type": "VOID",
+      "variables": [
+        { "name": "@balance", "type": "DECIMAL(10,2)" },
+        { "name": "@limit", "type": "DECIMAL(10,2)" }
+      ],
+      "statements": [
+        {
+          "type": "SELECT_INTO",
+          "query": "SELECT Balance, CreditLimit FROM Customers WHERE CustomerID = @customerId",
+          "into_vars": ["@balance", "@limit"]
+        },
+        {
+          "type": "IF",
+          "condition": "(@balance + @amount) > @limit",
+          "then": [
+            {
+              "type": "EXECUTE_PROCEDURE",
+              "name": "usp_LogEvent",
+              "args": [
+                "'CREDIT_FAIL'",
+                "'Customer ' + CONVERT(VARCHAR, @customerId) + ' exceeded credit limit'"
+              ]
+            },
+            {
+              "type": "RAISERROR",
+              "expression": "RAISERROR('Credit limit exceeded', 16, 1)"
+            }
+          ],
+          "else": [
+            {
+              "type": "EXECUTE_PROCEDURE",
+              "name": "usp_LogEvent",
+              "args": [
+                "'CREDIT_OK'",
+                "'Customer ' + CONVERT(VARCHAR, @customerId) + ' within credit limit'"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "proc_name": "usp_PlaceOrder",
+      "params": [
+        { "name": "@customerId", "type": "INT", "mode": "IN" },
+        { "name": "@amount", "type": "DECIMAL(10,2)", "mode": "IN" }
+      ],
+      "return_type": "VOID",
+      "variables": [
+        { "name": "@orderId", "type": "INT" }
+      ],
+      "statements": [
+        {
+          "type": "TRY",
+          "body": [
+            { "type": "BEGIN_TRANSACTION" },
+            {
+              "type": "EXECUTE_PROCEDURE",
+              "name": "usp_ValidateCustomerCredit",
+              "args": ["@customerId", "@amount"]
+            },
+            {
+              "type": "SELECT_INTO",
+              "query": "SELECT ISNULL(MAX(OrderID), 0) + 1 FROM Orders",
+              "into_vars": ["@orderId"]
+            },
+            {
+              "type": "INSERT",
+              "table": "Orders",
+              "columns": ["OrderID", "CustomerID", "Amount", "Status"],
+              "query": "INSERT INTO Orders(OrderID, CustomerID, Amount, Status) VALUES(@orderId, @customerId, @amount, 'NEW')"
+            },
+            {
+              "type": "EXECUTE_PROCEDURE",
+              "name": "usp_FinalizeOrder",
+              "args": ["@orderId"]
+            },
+            { "type": "COMMIT" },
+            {
+              "type": "EXECUTE_PROCEDURE",
+              "name": "usp_LogEvent",
+              "args": [
+                "'ORDER_PLACED'",
+                "'Order ' + CONVERT(VARCHAR, @orderId) + ' placed for Customer ' + CONVERT(VARCHAR, @customerId)"
+              ]
+            }
+          ],
+          "catch": {
+            "type": "CATCH",
+            "body": [
+              { "type": "ROLLBACK" },
+              {
+                "type": "EXECUTE_PROCEDURE",
+                "name": "usp_LogEvent",
+                "args": [
+                  "'ORDER_FAIL'",
+                  "'Order placement failed for Customer ' + CONVERT(VARCHAR, @customerId)"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "func_name": "fn_GetCustomerBalanceWithAudit",
+      "params": [
+        { "name": "@customerId", "type": "INT", "mode": "IN" }
+      ],
+      "return_type": "DECIMAL(10,2)",
+      "variables": [
+        { "name": "@balance", "type": "DECIMAL(10,2)" }
+      ],
+      "statements": [
+        {
+          "type": "SELECT_INTO",
+          "query": "SELECT Balance FROM Customers WHERE CustomerID = @customerId",
+          "into_vars": ["@balance"]
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_LogEvent",
+          "args": [
+            "'FUNC_CALL'",
+            "'fn_GetCustomerBalanceWithAudit for Customer ' + CONVERT(VARCHAR, @customerId)"
+          ]
+        },
+        { "type": "RETURN", "value": "@balance" }
+      ]
+    },
+    {
+      "func_name": "fn_GetCreditStatus",
+      "params": [
+        { "name": "@customerId", "type": "INT", "mode": "IN" }
+      ],
+      "return_type": "VARCHAR(20)",
+      "variables": [
+        { "name": "@balance", "type": "DECIMAL(10,2)" },
+        { "name": "@limit", "type": "DECIMAL(10,2)" },
+        { "name": "@status", "type": "VARCHAR(20)" }
+      ],
+      "statements": [
+        {
+          "type": "SET",
+          "name": "@balance",
+          "value": "dbo.fn_GetCustomerBalanceWithAudit(@customerId)"
+        },
+        {
+          "type": "SELECT_INTO",
+          "query": "SELECT CreditLimit FROM Customers WHERE CustomerID = @customerId",
+          "into_vars": ["@limit"]
+        },
+        {
+          "type": "IF",
+          "condition": "@balance > @limit",
+          "then": [
+            { "type": "SET", "name": "@status", "value": "'OVER_LIMIT'" },
+            {
+              "type": "EXECUTE_PROCEDURE",
+              "name": "usp_LogEvent",
+              "args": [
+                "'CREDIT_STATUS'",
+                "'Customer ' + CONVERT(VARCHAR, @customerId) + ' is over limit'"
+              ]
+            }
+          ],
+          "else": [
+            { "type": "SET", "name": "@status", "value": "'OK'" },
+            {
+              "type": "EXECUTE_PROCEDURE",
+              "name": "usp_LogEvent",
+              "args": [
+                "'CREDIT_STATUS'",
+                "'Customer ' + CONVERT(VARCHAR, @customerId) + ' is within limit'"
+              ]
+            }
+          ]
+        },
+        { "type": "RETURN", "value": "@status" }
+      ]
+    },
+    {
+      "func_name": "fn_GetCustomerReport",
+      "params": [
+        { "name": "@customerId", "type": "INT", "mode": "IN" }
+      ],
+      "return_type": "VARCHAR(500)",
+      "variables": [
+        { "name": "@balance", "type": "DECIMAL(10,2)" },
+        { "name": "@status", "type": "VARCHAR(20)" },
+        { "name": "@report", "type": "VARCHAR(500)" }
+      ],
+      "statements": [
+        {
+          "type": "SET",
+          "name": "@balance",
+          "value": "dbo.fn_GetCustomerBalanceWithAudit(@customerId)"
+        },
+        {
+          "type": "SET",
+          "name": "@status",
+          "value": "dbo.fn_GetCreditStatus(@customerId)"
+        },
+        {
+          "type": "SET",
+          "name": "@report",
+          "value": "'Customer ' + CONVERT(VARCHAR, @customerId) + ' | Balance: ' + CONVERT(VARCHAR, @balance) + ' | Credit Status: ' + @status"
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_LogEvent",
+          "args": [
+            "'REPORT'",
+            "'Generated report for Customer ' + CONVERT(VARCHAR, @customerId)"
+          ]
+        },
+        { "type": "RETURN", "value": "@report" }
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "trigger_name": "trg_AfterOrderInsert",
+      "on_table": "Orders",
+      "event": "AFTER INSERT",
+      "statements": [
+        {
+          "type": "DECLARE",
+          "name": "@orderId",
+          "value": null
+        },
+        {
+          "type": "DECLARE",
+          "name": "@custId",
+          "value": null
+        },
+        {
+          "type": "DECLARE",
+          "name": "@amount",
+          "value": null
+        },
+        {
+          "type": "SELECT_INTO",
+          "query": "SELECT OrderID, CustomerID, Amount FROM INSERTED",
+          "into_vars": ["@orderId", "@custId", "@amount"]
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_LogEvent",
+          "args": [
+            "'TRIGGER_ORDER'",
+            "'Order Insert Trigger fired for Order ' + CONVERT(VARCHAR, @orderId)"
+          ]
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_FinalizeOrder",
+          "args": ["@orderId"]
+        },
+        {
+          "type": "DECLARE",
+          "name": "@report",
+          "value": null
+        },
+        {
+          "type": "SET",
+          "name": "@report",
+          "value": "dbo.fn_GetCustomerReport(@custId)"
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_LogEvent",
+          "args": [
+            "'TRIGGER_REPORT'",
+            "'Report in trigger: ' + @report"
+          ]
+        }
+      ]
+    },
+    {
+      "trigger_name": "trg_AfterShipmentInsert",
+      "on_table": "Shipments",
+      "event": "AFTER INSERT",
+      "statements": [
+        {
+          "type": "DECLARE",
+          "name": "@shipId",
+          "value": null
+        },
+        {
+          "type": "DECLARE",
+          "name": "@orderId",
+          "value": null
+        },
+        {
+          "type": "SELECT_INTO",
+          "query": "SELECT ShipmentID, OrderID FROM INSERTED",
+          "into_vars": ["@shipId", "@orderId"]
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_LogEvent",
+          "args": [
+            "'TRIGGER_SHIPMENT'",
+            "'Shipment Trigger fired for Shipment ' + CONVERT(VARCHAR, @shipId)"
+          ]
+        },
+        {
+          "type": "DECLARE",
+          "name": "@custId",
+          "value": null
+        },
+        {
+          "type": "SELECT_INTO",
+          "query": "SELECT CustomerID FROM Orders WHERE OrderID = @orderId",
+          "into_vars": ["@custId"]
+        },
+        {
+          "type": "DECLARE",
+          "name": "@status",
+          "value": null
+        },
+        {
+          "type": "SET",
+          "name": "@status",
+          "value": "dbo.fn_GetCreditStatus(@custId)"
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_LogEvent",
+          "args": [
+            "'TRIGGER_CREDIT'",
+            "'Customer ' + CONVERT(VARCHAR, @custId) + ' status after shipment: ' + @status"
+          ]
+        }
+      ]
+    }
+  ]
+}
