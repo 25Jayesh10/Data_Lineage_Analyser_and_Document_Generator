@@ -1,4 +1,3 @@
-
 import os
 import google.generativeai as genai
 import openai
@@ -7,6 +6,7 @@ from dotenv import load_dotenv
 
 # Load all environment variables from a .env file
 load_dotenv()
+
 
 def _initialize_gemini():
     """Initializes and returns the Gemini model client."""
@@ -17,6 +17,7 @@ def _initialize_gemini():
     except KeyError:
         print("❌ Error: GEMINI_API_KEY not found in .env file.")
         return None
+
 
 def _initialize_azure():
     """Initializes and returns the Azure OpenAI client."""
@@ -30,6 +31,7 @@ def _initialize_azure():
         print(f"❌ Error: {e} not found in .env file for Azure configuration.")
         return None
 
+
 def _initialize_anthropic():
     """Initializes and returns the Anthropic client."""
     try:
@@ -37,6 +39,7 @@ def _initialize_anthropic():
     except KeyError:
         print("❌ Error: ANTHROPIC_API_KEY not found in .env file.")
         return None
+
 
 def _generate_with_gemini(prompt: str) -> str:
     """Generates content using Google Gemini."""
@@ -48,6 +51,7 @@ def _generate_with_gemini(prompt: str) -> str:
         return response.text.strip()
     except Exception as e:
         return f"Description could not be generated due to a Gemini API error: {e}"
+
 
 def _generate_with_azure(prompt: str) -> str:
     """Generates content using Azure OpenAI."""
@@ -65,6 +69,7 @@ def _generate_with_azure(prompt: str) -> str:
     except Exception as e:
         return f"Description could not be generated due to an Azure API error: {e}"
 
+
 def _generate_with_anthropic(prompt: str) -> str:
     """Generates content using Anthropic Claude."""
     anthropic_client = _initialize_anthropic()
@@ -79,7 +84,8 @@ def _generate_with_anthropic(prompt: str) -> str:
         return response.content[0].text.strip()
     except Exception as e:
         return f"Description could not be generated due to an Anthropic API error: {e}"
-    
+
+
 def _initialize_openrouter():
     """Initializes and returns the OpenRouter API key."""
     try:
@@ -90,6 +96,7 @@ def _initialize_openrouter():
     except KeyError:
         print("❌ Error: OPENROUTER_API_KEY not found in .env file.")
         return None
+
 
 def _generate_with_openrouter(prompt: str, model: str = "mistralai/mistral-small-3.2-24b-instruct:free") -> str:
     """Generates content using OpenRouter."""
@@ -114,7 +121,6 @@ def _generate_with_openrouter(prompt: str, model: str = "mistralai/mistral-small
     except Exception as e:
         return f"Description could not be generated due to an OpenRouter API error: {e}"
 
-    
 
 def generate_business_logic(proc_name: str, params: list, tables: list, sql_code: str, llm_provider: str) -> str:
     """
@@ -122,22 +128,23 @@ def generate_business_logic(proc_name: str, params: list, tables: list, sql_code
     This function acts as a dispatcher based on the user's runtime choice.
     """
     prompt = f"""
-    You are an expert SQL technical writer. Your task is to analyze the provided SQL procedure and write a concise business logic description.
+    You are an expert SQL technical writer. Your task is to analyze the provided SQL object and write a concise business logic description.
 
     **CONTEXT:**
-    - **Procedure Name:** {proc_name}
+    - **Object Name:** {proc_name}
     - **Parameters:** {params}
     - **Tables Involved:** {tables}
     - **SQL Source Code:**
     ```sql
     {sql_code}
     ```
+
     Output Format: Only give the business logic description in plain text without any additional formatting or markdown or any other suggestions or warnings.
+
     **INSTRUCTION:**
-    Based on all the context, write a clear, one-paragraph business logic description. Explain the procedure's purpose from a business perspective.
+    Based on all the context, write a clear, one-paragraph business logic description. Explain the object's purpose from a business perspective.
     """
-    
-    # Dispatch to the correct generation function based on the user's choice
+
     if llm_provider == "azure":
         return _generate_with_azure(prompt)
     elif llm_provider == "anthropic":
