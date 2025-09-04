@@ -68,16 +68,20 @@ import os
 from src.analyze_lineage import analyze_lineage
 from src.validation_script import validate
 from src.logging_styles import Colours
+from src.generate_mermaid import generate_lineage_diagram
+from src.convert_mmd_to_md import convert_mmd_to_md
+
 
 
 def main():
     # Define file paths
     input_dir = "input"
     output_dir = "output"
+    diagrams_dir = "output\diagrams" # Directory for the output diagram
 
     index_path = os.path.join(input_dir, "index", "index3.json")  # Tool 1 output (already exists)
     ast_path = os.path.join(input_dir, "ast", "ast3.json")      # Tool 2 output (already exists)
-    output_path = os.path.join(output_dir, "lineage3.json")  # Tool 4 output
+    output_path = os.path.join(output_dir, "lineage3.json")   # Tool 4 output
 
     # ✅ Validation before running Tool 4
     print(Colours.YELLOW + "Validating index.json and ast.json against schemas..." + Colours.RESET)
@@ -91,6 +95,19 @@ def main():
     print(Colours.GREEN + "Starting Data Lineage Analysis..." + Colours.RESET)
     analyze_lineage(index_path, ast_path, output_path)
     print(Colours.GREEN + "Data Lineage Analysis complete." + Colours.RESET)
+
+    # --- ADDED: Call the Mermaid diagram generation script ---
+    print(Colours.GREEN + "Generating Mermaid diagram from lineage data..." + Colours.RESET)
+    
+    # Define the path for the final diagram
+    mermaid_output_path = os.path.join(diagrams_dir, "lineage_diagram3.mmd")
+    markdown_path = os.path.join(diagrams_dir, "lineage_diagram3.md")
+    
+    # Call the function with the lineage output as its input
+    generate_lineage_diagram(output_path, mermaid_output_path)
+    # The success message is printed from within the generate_mermaid function.
+    convert_mmd_to_md(mermaid_output_path, markdown_path)
+#     print(Colours.GREEN + "Mermaid diagram and Markdown generated." + Colours.RESET)
 
 
 if __name__ == "__main__":

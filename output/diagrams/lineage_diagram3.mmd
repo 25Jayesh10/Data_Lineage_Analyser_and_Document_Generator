@@ -1,0 +1,132 @@
+graph TD
+
+    %% --- Styles --- %%
+    classDef table fill:#f96,stroke:#333,stroke-width:2px,color:#000;
+    classDef function fill:#9f6,stroke:#333,stroke-width:2px,color:#000,font-weight:bold;
+    classDef trigger fill:#fa0,stroke:#333,stroke-width:2px,color:#000,font-weight:bold;
+    classDef procedure fill:#9cf,stroke:#333,stroke-width:2px,color:#000,font-weight:bold;
+    classDef column fill:#fff,stroke:#333,stroke-width:1px,color:#000,font-size:12px;
+
+
+    %% --- Visual Hierarchy --- %%
+    subgraph Functions
+        dbo_fn_CheckStockHealth
+        dbo_fn_GetInventoryReport
+        dbo_fn_GetStockLevelWithAudit
+    end
+
+    subgraph Triggers
+        dbo_trg_AfterInventoryUpdate
+        dbo_trg_AfterPurchaseOrderInsert
+    end
+
+    subgraph Procedures
+        dbo_usp_CreatePurchaseOrder
+        dbo_usp_ProcessInventoryUpdate
+        dbo_usp_ReorderInventory
+        dbo_usp_WriteAudit
+    end
+
+
+    %% --- Node Definitions --- %%
+
+    subgraph sg_dbo_AuditTrail["dbo.AuditTrail"]
+        dbo_AuditTrail_Details["Details"];
+        class dbo_AuditTrail_Details column;
+        dbo_AuditTrail_EventType["EventType"];
+        class dbo_AuditTrail_EventType column;
+    end
+    class sg_dbo_AuditTrail table;
+
+    subgraph sg_dbo_INSERTED["dbo.INSERTED"]
+        dbo_INSERTED_ItemID["ItemID"];
+        class dbo_INSERTED_ItemID column;
+        dbo_INSERTED_Quantity["Quantity"];
+        class dbo_INSERTED_Quantity column;
+    end
+    class sg_dbo_INSERTED table;
+
+    subgraph sg_dbo_Inventory["dbo.Inventory"]
+        dbo_Inventory_ItemID["ItemID"];
+        class dbo_Inventory_ItemID column;
+        dbo_Inventory_LastUpdated["LastUpdated"];
+        class dbo_Inventory_LastUpdated column;
+        dbo_Inventory_Quantity["Quantity"];
+        class dbo_Inventory_Quantity column;
+        dbo_Inventory_ReorderLevel["ReorderLevel"];
+        class dbo_Inventory_ReorderLevel column;
+        dbo_Inventory_adjustment["adjustment"];
+        class dbo_Inventory_adjustment column;
+        dbo_Inventory_itemId["itemId"];
+        class dbo_Inventory_itemId column;
+    end
+    class sg_dbo_Inventory table;
+
+    subgraph sg_dbo_PurchaseOrders["dbo.PurchaseOrders"]
+        dbo_PurchaseOrders_ItemID["ItemID"];
+        class dbo_PurchaseOrders_ItemID column;
+        dbo_PurchaseOrders_Quantity["Quantity"];
+        class dbo_PurchaseOrders_Quantity column;
+        dbo_PurchaseOrders_Status["Status"];
+        class dbo_PurchaseOrders_Status column;
+    end
+    class sg_dbo_PurchaseOrders table;
+    dbo_fn_CheckStockHealth("dbo.fn_CheckStockHealth");
+    class dbo_fn_CheckStockHealth function;
+    dbo_fn_GetInventoryReport("dbo.fn_GetInventoryReport");
+    class dbo_fn_GetInventoryReport function;
+    dbo_fn_GetStockLevelWithAudit("dbo.fn_GetStockLevelWithAudit");
+    class dbo_fn_GetStockLevelWithAudit function;
+    dbo_trg_AfterInventoryUpdate("dbo.trg_AfterInventoryUpdate");
+    class dbo_trg_AfterInventoryUpdate trigger;
+    dbo_trg_AfterPurchaseOrderInsert("dbo.trg_AfterPurchaseOrderInsert");
+    class dbo_trg_AfterPurchaseOrderInsert trigger;
+    dbo_usp_CreatePurchaseOrder("dbo.usp_CreatePurchaseOrder");
+    class dbo_usp_CreatePurchaseOrder procedure;
+    dbo_usp_ProcessInventoryUpdate("dbo.usp_ProcessInventoryUpdate");
+    class dbo_usp_ProcessInventoryUpdate procedure;
+    dbo_usp_ReorderInventory("dbo.usp_ReorderInventory");
+    class dbo_usp_ReorderInventory procedure;
+    dbo_usp_WriteAudit("dbo.usp_WriteAudit");
+    class dbo_usp_WriteAudit procedure;
+
+    %% --- Relationships --- %%
+    dbo_Inventory -.->|AFTER UPDATE| dbo_trg_AfterInventoryUpdate;
+    dbo_PurchaseOrders -.->|AFTER INSERT| dbo_trg_AfterPurchaseOrderInsert;
+    dbo_fn_CheckStockHealth -->|calls| dbo_fn_GetStockLevelWithAudit;
+    dbo_fn_CheckStockHealth -->|calls| dbo_usp_WriteAudit;
+    dbo_fn_GetInventoryReport -->|calls| CONVERT;
+    dbo_fn_GetInventoryReport -->|calls| dbo_fn_CheckStockHealth;
+    dbo_fn_GetInventoryReport -->|calls| dbo_fn_GetStockLevelWithAudit;
+    dbo_fn_GetInventoryReport -->|calls| dbo_usp_WriteAudit;
+    dbo_fn_GetStockLevelWithAudit -- "read" --> dbo_Inventory_ItemID;
+    dbo_fn_GetStockLevelWithAudit -- "read" --> dbo_Inventory_Quantity;
+    dbo_fn_GetStockLevelWithAudit -- "read" --> dbo_Inventory_itemId;
+    dbo_fn_GetStockLevelWithAudit -->|calls| dbo_usp_WriteAudit;
+    dbo_trg_AfterInventoryUpdate -- "read" --> dbo_INSERTED_ItemID;
+    dbo_trg_AfterInventoryUpdate -->|calls| dbo_fn_GetInventoryReport;
+    dbo_trg_AfterInventoryUpdate -->|calls| dbo_usp_ProcessInventoryUpdate;
+    dbo_trg_AfterInventoryUpdate -->|calls| dbo_usp_WriteAudit;
+    dbo_trg_AfterPurchaseOrderInsert -- "read" --> dbo_INSERTED_ItemID;
+    dbo_trg_AfterPurchaseOrderInsert -- "read" --> dbo_INSERTED_Quantity;
+    dbo_trg_AfterPurchaseOrderInsert -->|calls| dbo_fn_CheckStockHealth;
+    dbo_trg_AfterPurchaseOrderInsert -->|calls| dbo_usp_WriteAudit;
+    dbo_usp_CreatePurchaseOrder -- "write" --> dbo_PurchaseOrders_ItemID;
+    dbo_usp_CreatePurchaseOrder -- "write" --> dbo_PurchaseOrders_Quantity;
+    dbo_usp_CreatePurchaseOrder -- "write" --> dbo_PurchaseOrders_Status;
+    dbo_usp_CreatePurchaseOrder -->|calls| dbo_usp_WriteAudit;
+    dbo_usp_ProcessInventoryUpdate -- "read" --> dbo_Inventory_ItemID;
+    dbo_usp_ProcessInventoryUpdate -- "read" --> dbo_Inventory_adjustment;
+    dbo_usp_ProcessInventoryUpdate -- "read" --> dbo_Inventory_itemId;
+    dbo_usp_ProcessInventoryUpdate -- "write" --> dbo_Inventory_LastUpdated;
+    dbo_usp_ProcessInventoryUpdate -- "write" --> dbo_Inventory_Quantity;
+    dbo_usp_ProcessInventoryUpdate -->|calls| dbo_usp_ReorderInventory;
+    dbo_usp_ProcessInventoryUpdate -->|calls| dbo_usp_WriteAudit;
+    dbo_usp_ReorderInventory -- "read" --> dbo_Inventory_ItemID;
+    dbo_usp_ReorderInventory -- "read" --> dbo_Inventory_Quantity;
+    dbo_usp_ReorderInventory -- "read" --> dbo_Inventory_ReorderLevel;
+    dbo_usp_ReorderInventory -- "read" --> dbo_Inventory_itemId;
+    dbo_usp_ReorderInventory -->|calls| dbo_usp_CreatePurchaseOrder;
+    dbo_usp_ReorderInventory -->|calls| dbo_usp_WriteAudit;
+    dbo_usp_WriteAudit -- "write" --> dbo_AuditTrail_Details;
+    dbo_usp_WriteAudit -- "write" --> dbo_AuditTrail_EventType;
