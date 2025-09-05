@@ -52,17 +52,6 @@ def generate_markdown(proc_name, details, llm_provider):
         md.append(f"    {proc_name} --> {table}")
     md.append("```\n\n---\n")
 
-    # # Business Logic via Gemini LLM
-    # md.append("### Business Logic\n")
-    # try:
-    #     sql_code = details.get("sql", "")
-    #     params_list = [f"@{p['name']}" for p in details.get("params", [])]
-    #     description = generate_business_logic(proc_name, params_list, details.get("tables", []), sql_code)
-    #     md.append(description)
-    # except Exception as e:
-    #     md.append("Description could not be generated due to an error.\n")
-    #     print(f"⚠️ Error generating description for {proc_name}: {e}")
-
     # Business Logic via LLM
     md.append("### Business Logic\n")
     try:

@@ -15,10 +15,6 @@ except ImportError:
         YELLOW, RESET, GREEN, RED = "", "", "", ""
 
 def analyze_lineage(index_file: str, ast_file: str, output_file: str):
-    """
-    Analyzes database object dependencies from an index file and an AST file
-    to produce a detailed data lineage report, including table and column usage.
-    """
     SQL_KEYWORDS = {
         'SELECT', 'FROM', 'WHERE', 'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE',
         'JOIN', 'INNER', 'LEFT', 'RIGHT', 'OUTER', 'ON', 'GROUP', 'BY', 'ORDER', 'HAVING',

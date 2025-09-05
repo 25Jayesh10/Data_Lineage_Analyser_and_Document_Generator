@@ -1,0 +1,125 @@
+{
+  "AcmeERP.PayrollLogs": {
+    "called_by": [
+      "AcmeERP.usp_ProcessFullPayrollCycle"
+    ],
+    "columns": [
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "EmployeeID",
+        "usage": "write"
+      },
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "GrossSalary",
+        "usage": "write"
+      },
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "PayPeriodEnd",
+        "usage": "write"
+      },
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "PayPeriodStart",
+        "usage": "write"
+      },
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "TaxDeducted",
+        "usage": "write"
+      }
+    ],
+    "type": "table"
+  },
+  "AcmeERP.usp_CalculateFifoCost": {
+    "called_by_function": [],
+    "called_by_procedure": [],
+    "called_by_trigger": [],
+    "calls": [],
+    "type": "procedure"
+  },
+  "AcmeERP.usp_ConvertToBase": {
+    "called_by_function": [],
+    "called_by_procedure": [],
+    "called_by_trigger": [],
+    "calls": [],
+    "type": "procedure"
+  },
+  "AcmeERP.usp_ProcessFullPayrollCycle": {
+    "called_by_function": [],
+    "called_by_procedure": [],
+    "called_by_trigger": [],
+    "calls": [
+      "dbo.OBJECT_ID"
+    ],
+    "type": "procedure"
+  },
+  "dbo.#PayrollCalc": {
+    "called_by": [
+      "AcmeERP.usp_ProcessFullPayrollCycle"
+    ],
+    "columns": [
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "BaseSalary",
+        "usage": "write"
+      },
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "Bonus",
+        "usage": "write"
+      },
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "ConvertedSalary",
+        "usage": "write"
+      },
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "Currency",
+        "usage": "write"
+      },
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "EmployeeID",
+        "usage": "write"
+      },
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "EmployeeID",
+        "usage": "read"
+      },
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "GrossSalary",
+        "usage": "write"
+      },
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "NetSalary",
+        "usage": "write"
+      },
+      {
+        "caller": "AcmeERP.usp_ProcessFullPayrollCycle",
+        "caller_type": "procedure",
+        "name": "Tax",
+        "usage": "write"
+      }
+    ],
+    "type": "table"
+  }
+}

@@ -124,11 +124,11 @@ def _generate_with_openrouter(prompt: str, model: str = "mistralai/mistral-small
 
 def generate_business_logic(proc_name: str, params: list, tables: list, sql_code: str, llm_provider: str) -> str:
     """
-    Crafts a prompt and gets a business logic description from the selected LLM provider.
+    Crafts a detailed prompt and gets a business logic description from the selected LLM provider.
     This function acts as a dispatcher based on the user's runtime choice.
     """
     prompt = f"""
-    You are an expert SQL technical writer. Your task is to analyze the provided SQL object and write a concise business logic description.
+    You are a Senior Business Analyst with deep SQL expertise. Your task is to analyze the provided SQL stored procedure and write a comprehensive, easy-to-understand description of its business logic for a non-technical audience.
 
     **CONTEXT:**
     - **Object Name:** {proc_name}
@@ -139,10 +139,16 @@ def generate_business_logic(proc_name: str, params: list, tables: list, sql_code
     {sql_code}
     ```
 
-    Output Format: Only give the business logic description in plain text without any additional formatting or markdown or any other suggestions or warnings.
-
     **INSTRUCTION:**
-    Based on all the context, write a clear, one-paragraph business logic description. Explain the object's purpose from a business perspective.
+    Based on all the provided context, please generate a detailed business logic description. Do not just describe what the code does, but explain *why* it does it from a business process perspective. Structure your response as follows:
+    1.  **Overall Purpose:** Start with a high-level summary. What is the primary business goal of this procedure?
+    2.  **Process Breakdown:** Describe the step-by-step business process this procedure automates. Explain the significance of key calculations, conditions (like IF/ELSE or CASE statements), and the data flow.
+    3.  **Key Business Rules:** Explicitly list and explain any important business rules embedded in the logic. For example, "A 10% bonus is applied to employees with 5 or more years of service."
+    4.  **Inputs and Outputs:** Briefly describe what business information the procedure needs to run (Inputs) and what it produces (Outputs).
+
+    **Output Format:**
+    Provide the response in plain text. Use numbered lists or simple headers for each section as outlined in the instructions. Avoid using markdown, code blocks, or any other special formatting.
+
     """
 
     if llm_provider == "azure":

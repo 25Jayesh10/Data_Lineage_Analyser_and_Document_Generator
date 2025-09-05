@@ -1,0 +1,337 @@
+{
+  "procedures": [
+    {
+      "proc_name": "AcmeERP.usp_CalculateFifoCost",
+      "params": [
+        {
+          "name": "@ProductID",
+          "type": "INT",
+          "mode": "IN"
+        },
+        {
+          "name": "@QuantityRequested",
+          "type": "INT",
+          "mode": "IN"
+        }
+      ],
+      "return_type": "VOID",
+      "variables": [],
+      "statements": [
+        {
+          "type": "WITH_CTE",
+          "cte_list": [
+            {
+              "name": "CTE_FIFO",
+              "query": "SELECT MovementID, ProductID, Quantity, UnitCost, SUM(Quantity) OVER (PARTITION BY ProductID ORDER BY MovementDate ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS RunningTotal FROM AcmeERP.StockMovements WHERE ProductID = @ProductID AND Direction = 'IN'"
+            }
+          ],
+          "main_query": "SELECT AVG(UnitCost) AS FifoCostEstimate FROM CTE_FIFO WHERE RunningTotal <= @QuantityRequested"
+        }
+      ]
+    },
+    {
+      "proc_name": "AcmeERP.usp_ConvertToBase",
+      "params": [
+        {
+          "name": "@CurrencyCode",
+          "type": "CHAR(3)",
+          "mode": "IN"
+        },
+        {
+          "name": "@Amount",
+          "type": "DECIMAL(18,2)",
+          "mode": "IN"
+        },
+        {
+          "name": "@ConversionDate",
+          "type": "DATE",
+          "mode": "IN"
+        }
+      ],
+      "return_type": "VOID",
+      "variables": [
+        {
+          "name": "@Rate",
+          "type": "DECIMAL(18,6)"
+        }
+      ],
+      "statements": [
+        {
+          "type": "SELECT_INTO",
+          "into_vars": [
+            "@Rate"
+          ],
+          "query": "SELECT RateToBase FROM AcmeERP.ExchangeRates WHERE CurrencyCode = @CurrencyCode AND RateDate = @ConversionDate"
+        },
+        {
+          "type": "IF",
+          "condition": {
+            "op": "IS",
+            "left": "@Rate",
+            "right": null
+          },
+          "then": [
+            {
+              "type": "SELECT_INTO",
+              "into_vars": [
+                "@Rate"
+              ],
+              "query": "SELECT TOP 1 RateToBase FROM AcmeERP.ExchangeRates WHERE CurrencyCode = @CurrencyCode AND RateDate < @ConversionDate ORDER BY RateDate DESC"
+            }
+          ]
+        },
+        {
+          "type": "IF",
+          "condition": {
+            "op": "IS",
+            "left": "@Rate",
+            "right": null
+          },
+          "then": [
+            {
+              "type": "SELECT_INTO",
+              "into_vars": [
+                "@Rate"
+              ],
+              "query": "SELECT AVG(RateToBase) FROM AcmeERP.ExchangeRates WHERE CurrencyCode = @CurrencyCode AND RateDate BETWEEN DATEADD(DAY, -7, @ConversionDate) AND @ConversionDate"
+            }
+          ]
+        },
+        {
+          "type": "IF",
+          "condition": {
+            "op": "IS",
+            "left": "@Rate",
+            "right": null
+          },
+          "then": [
+            {
+              "type": "SET",
+              "name": "@Rate",
+              "value": "1"
+            }
+          ]
+        },
+        {
+          "type": "SELECT",
+          "query": "SELECT @Amount * @Rate AS ConvertedAmount"
+        }
+      ]
+    },
+    {
+      "proc_name": "AcmeERP.usp_ProcessFullPayrollCycle",
+      "params": [
+        {
+          "name": "@PayPeriodStart",
+          "type": "DATE",
+          "mode": "IN"
+        },
+        {
+          "name": "@PayPeriodEnd",
+          "type": "DATE",
+          "mode": "IN"
+        }
+      ],
+      "return_type": "VOID",
+      "variables": [
+        {
+          "name": "@EmployeeID",
+          "type": "INT"
+        },
+        {
+          "name": "@BaseSalary",
+          "type": "DECIMAL(18,2)"
+        },
+        {
+          "name": "@Bonus",
+          "type": "DECIMAL(18,2)"
+        },
+        {
+          "name": "@GrossSalary",
+          "type": "DECIMAL(18,2)"
+        },
+        {
+          "name": "@Tax",
+          "type": "DECIMAL(18,2)"
+        },
+        {
+          "name": "@NetSalary",
+          "type": "DECIMAL(18,2)"
+        },
+        {
+          "name": "@Currency",
+          "type": "CHAR(3)"
+        },
+        {
+          "name": "@ConvertedSalary",
+          "type": "DECIMAL(18,2)"
+        },
+        {
+          "name": "@ExchangeRate",
+          "type": "DECIMAL(18,6)"
+        },
+        {
+          "name": "@CurrentDate",
+          "type": "DATE",
+          "default": "GETDATE()"
+        },
+        {
+          "name": "@ErrorMsg",
+          "type": "NVARCHAR(4000)"
+        },
+        {
+          "name": "@ErrorSeverity",
+          "type": "INT"
+        },
+        {
+          "name": "@ErrorState",
+          "type": "INT"
+        }
+      ],
+      "statements": [
+        {
+          "type": "RAW_SQL",
+          "query": "SET NOCOUNT ON;"
+        },
+        {
+          "type": "TRY",
+          "body": [
+            {
+              "type": "BEGIN_TRANSACTION"
+            },
+            {
+              "type": "IF",
+              "condition": {
+                "op": "IS NOT",
+                "left": "OBJECT_ID('tempdb..#PayrollCalc')",
+                "right": null
+              },
+              "then": [
+                {
+                  "type": "DROP_TABLE",
+                  "table": "#PayrollCalc"
+                }
+              ]
+            },
+            {
+              "type": "DECLARE_TEMP_TABLE",
+              "table": "#PayrollCalc",
+              "columns": [
+                { "name": "EmployeeID", "type": "INT" },
+                { "name": "BaseSalary", "type": "DECIMAL(18,2)" },
+                { "name": "Bonus", "type": "DECIMAL(18,2)" },
+                { "name": "GrossSalary", "type": "DECIMAL(18,2)" },
+                { "name": "Tax", "type": "DECIMAL(18,2)" },
+                { "name": "NetSalary", "type": "DECIMAL(18,2)" },
+                { "name": "Currency", "type": "CHAR(3)" },
+                { "name": "ConvertedSalary", "type": "DECIMAL(18,2)" }
+              ]
+            },
+            {
+              "type": "INSERT",
+              "table": "#PayrollCalc",
+              "columns": [ "EmployeeID", "BaseSalary", "Bonus", "GrossSalary", "Tax", "NetSalary", "Currency" ],
+              "query": "SELECT e.EmployeeID, e.BaseSalary, CASE WHEN DATEDIFF(YEAR, e.HireDate, @PayPeriodEnd) >= 10 THEN e.BaseSalary * 0.15 WHEN DATEDIFF(YEAR, e.HireDate, @PayPeriodEnd) >= 5 THEN e.BaseSalary * 0.10 WHEN DATEDIFF(YEAR, e.HireDate, @PayPeriodEnd) >= 2 THEN e.BaseSalary * 0.05 ELSE 0 END AS Bonus, e.BaseSalary + CASE WHEN DATEDIFF(YEAR, e.HireDate, @PayPeriodEnd) >= 10 THEN e.BaseSalary * 0.15 WHEN DATEDIFF(YEAR, e.HireDate, @PayPeriodEnd) >= 5 THEN e.BaseSalary * 0.10 WHEN DATEDIFF(YEAR, e.HireDate, @PayPeriodEnd) >= 2 THEN e.BaseSalary * 0.05 ELSE 0 END AS GrossSalary, CASE WHEN e.BaseSalary <= 50000 THEN e.BaseSalary * 0.1 WHEN e.BaseSalary <= 75000 THEN e.BaseSalary * 0.15 ELSE e.BaseSalary * 0.2 END AS Tax, (e.BaseSalary + CASE WHEN DATEDIFF(YEAR, e.HireDate, @PayPeriodEnd) >= 10 THEN e.BaseSalary * 0.15 WHEN DATEDIFF(YEAR, e.HireDate, @PayPeriodEnd) >= 5 THEN e.BaseSalary * 0.10 WHEN DATEDIFF(YEAR, e.HireDate, @PayPeriodEnd) >= 2 THEN e.BaseSalary * 0.05 ELSE 0 END) - CASE WHEN e.BaseSalary <= 50000 THEN e.BaseSalary * 0.1 WHEN e.BaseSalary <= 75000 THEN e.BaseSalary * 0.15 ELSE e.BaseSalary * 0.2 END AS NetSalary, ISNULL(e.Currency, 'USD') AS Currency FROM AcmeERP.Employees e"
+            },
+            {
+              "type": "DECLARE_CURSOR",
+              "cursor_name": "PayrollCursor",
+              "query": "SELECT EmployeeID, GrossSalary, Currency FROM #PayrollCalc"
+            },
+            {
+              "type": "OPEN_CURSOR",
+              "cursor_name": "PayrollCursor"
+            },
+            {
+              "type": "FETCH_CURSOR",
+              "cursor_name": "PayrollCursor",
+              "fetch_into": [ "@EmployeeID", "@GrossSalary", "@Currency" ]
+            },
+            {
+              "type": "WHILE",
+              "condition": { "op": "=", "left": "@@FETCH_STATUS", "right": "0" },
+              "body": [
+                {
+                  "type": "IF",
+                  "condition": { "op": "<>", "left": "@Currency", "right": "'USD'" },
+                  "then": [
+                    {
+                      "type": "SELECT_INTO",
+                      "into_vars": [ "@ExchangeRate" ],
+                      "query": "SELECT TOP 1 RateToBase FROM AcmeERP.ExchangeRates WHERE CurrencyCode = @Currency AND RateDate <= @CurrentDate ORDER BY RateDate DESC"
+                    },
+                    {
+                      "type": "IF",
+                      "condition": { "op": "IS", "left": "@ExchangeRate", "right": null },
+                      "then": [ { "type": "SET", "name": "@ExchangeRate", "value": "1" } ]
+                    },
+                    {
+                      "type": "SET",
+                      "name": "@ConvertedSalary",
+                      "value": { "op": "*", "left": "@GrossSalary", "right": "@ExchangeRate" }
+                    }
+                  ],
+                  "else": [
+                    {
+                      "type": "SET",
+                      "name": "@ConvertedSalary",
+                      "value": "@GrossSalary"
+                    }
+                  ]
+                },
+                {
+                  "type": "UPDATE",
+                  "table": "#PayrollCalc",
+                  "set": { "ConvertedSalary": "@ConvertedSalary" },
+                  "where": { "op": "=", "left": "EmployeeID", "right": "@EmployeeID" }
+                },
+                {
+                  "type": "FETCH_CURSOR",
+                  "cursor_name": "PayrollCursor",
+                  "fetch_into": [ "@EmployeeID", "@GrossSalary", "@Currency" ]
+                }
+              ]
+            },
+            { "type": "CLOSE_CURSOR", "cursor_name": "PayrollCursor" },
+            { "type": "DEALLOCATE_CURSOR", "cursor_name": "PayrollCursor" },
+            {
+              "type": "INSERT",
+              "table": "AcmeERP.PayrollLogs",
+              "columns": [ "EmployeeID", "PayPeriodStart", "PayPeriodEnd", "GrossSalary", "TaxDeducted" ],
+              "query": "SELECT EmployeeID, @PayPeriodStart, @PayPeriodEnd, ConvertedSalary, Tax FROM #PayrollCalc"
+            },
+            {
+              "type": "COMMIT"
+            }
+          ],
+          "catch": [
+            {
+              "exception": "",
+              "body": [
+                {
+                  "type": "IF",
+                  "condition": { "op": ">", "left": "@@TRANCOUNT", "right": "0" },
+                  "then": [ { "type": "ROLLBACK" } ]
+                },
+                {
+                  "type": "SELECT_INTO",
+                  "into_vars": [ "@ErrorMsg", "@ErrorSeverity", "@ErrorState" ],
+                  "query": "SELECT ERROR_MESSAGE(), ERROR_SEVERITY(), ERROR_STATE()"
+                },
+                {
+                  "type": "RAISERROR",
+                  "message": "@ErrorMsg",
+                  "level": "@ErrorSeverity",
+                  "state": "@ErrorState"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "functions": [],
+  "triggers": []
+}
+

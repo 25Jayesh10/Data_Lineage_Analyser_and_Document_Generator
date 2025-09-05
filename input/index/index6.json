@@ -1,0 +1,61 @@
+{
+  "procedures": {
+    "AcmeERP.usp_CalculateFifoCost": {
+      "params": [
+        {
+          "name": "@ProductID",
+          "type": "INT"
+        },
+        {
+          "name": "@QuantityRequested",
+          "type": "INT"
+        }
+      ],
+      "calls": [],
+      "tables": [
+        "AcmeERP.StockMovements"
+      ]
+    },
+    "AcmeERP.usp_ConvertToBase": {
+      "params": [
+        {
+          "name": "@CurrencyCode",
+          "type": "CHAR(3)"
+        },
+        {
+          "name": "@Amount",
+          "type": "DECIMAL(18,2)"
+        },
+        {
+          "name": "@ConversionDate",
+          "type": "DATE"
+        }
+      ],
+      "calls": [],
+      "tables": [
+        "AcmeERP.ExchangeRates"
+      ]
+    },
+    "AcmeERP.usp_ProcessFullPayrollCycle": {
+      "params": [
+        {
+          "name": "@PayPeriodStart",
+          "type": "DATE"
+        },
+        {
+          "name": "@PayPeriodEnd",
+          "type": "DATE"
+        }
+      ],
+      "calls": [],
+      "tables": [
+        "AcmeERP.Employees",
+        "AcmeERP.ExchangeRates",
+        "AcmeERP.PayrollLogs"
+      ]
+    }
+  },
+  "functions": {},
+  "triggers": {}
+}
+
