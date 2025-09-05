@@ -130,5 +130,4 @@ graph TD
     dbo_usp_ReorderInventory -->|calls| dbo_usp_CreatePurchaseOrder;
     dbo_usp_ReorderInventory -->|calls| dbo_usp_WriteAudit;
     dbo_usp_WriteAudit -- "write" --> dbo_AuditTrail_Details;
-    dbo_usp_WriteAudit -- "write" --> dbo_AuditTrail_EventType;
-```
+    dbo_usp_WriteAudit -- "write" --> dbo_AuditTrail_EventType;```

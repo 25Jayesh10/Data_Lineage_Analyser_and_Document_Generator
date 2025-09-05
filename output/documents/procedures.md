@@ -55,7 +55,7 @@ graph TD
 
 ### Business Logic
 
-The stored procedure `usp_LogEvent` records application events in the `AuditLog` table.  It accepts the event type and a descriptive message as input parameters, then inserts a new log entry containing this information.  This allows for tracking of significant application activities for auditing, monitoring, and troubleshooting purposes.
+The stored procedure `usp_LogEvent` records application events in the `AuditLog` table.  It accepts the event type and a descriptive message as input parameters and inserts a new log entry containing this information, providing a mechanism for tracking significant application activities for auditing and troubleshooting purposes.
 
 ---
 
@@ -98,7 +98,7 @@ graph TD
 
 ### Business Logic
 
-This stored procedure, usp_UpdateOrderStatus, modifies the status of an order in the Orders table.  It accepts the order ID and the new status as input, updates the corresponding order's status, and then logs the change in the system's event log, recording the order ID and the new status.
+The stored procedure `usp_UpdateOrderStatus` modifies the status of an order in the `Orders` table.  It accepts an order ID and a new status as input, updates the order's status accordingly, and then logs the change in a separate event log using the `usp_LogEvent` procedure.
 
 ---
 
@@ -138,7 +138,7 @@ graph TD
 
 ### Business Logic
 
-The stored procedure `usp_CloseOrder` closes a specific order identified by its `orderId`.  It achieves this by calling another stored procedure, `usp_UpdateOrderStatus`, to change the order's status to 'CLOSED'.
+The stored procedure `usp_CloseOrder` closes an order specified by its ID.  It achieves this by calling another stored procedure, `usp_UpdateOrderStatus`, to update the order's status to 'CLOSED'.
 
 ---
 
@@ -180,7 +180,7 @@ graph TD
 
 ### Business Logic
 
-This function retrieves the total amount for a specified order and logs the function call in an audit trail.  It takes an order ID as input, queries the Orders table to find the corresponding order amount, and then uses a stored procedure to record the function execution in the audit log before returning the order's total amount.
+This function retrieves the total amount for a specified order and logs the function call in an audit trail.  It takes an order ID as input, queries the Orders table to find the corresponding order amount, and then uses a stored procedure to record an audit entry indicating the function was called with the given order ID.  The function then returns the retrieved order amount.
 
 ---
 
@@ -220,7 +220,7 @@ graph TD
 
 ### Business Logic
 
-The function fn_GetOrderWithTax calculates the total amount of an order including a 10% tax.  It retrieves the order's base amount from the function dbo.fn_GetOrderTotalWithAudit using the provided order ID and then applies a 10% tax rate to determine the final amount, which is returned as a decimal value.
+The function fn_GetOrderWithTax calculates the total amount of an order including a 10% tax.  It retrieves the order's base amount from the function dbo.fn_GetOrderTotalWithAudit using the provided order ID and then applies a 10% tax rate to this base amount, returning the final amount including tax.
 
 ---
 
@@ -256,7 +256,7 @@ graph TD
 
 ### Business Logic
 
-This trigger, trg_AfterInsertOrder, automatically logs order creation events.  After a new order is inserted into the Orders table, it captures the order ID and amount. It then calls a stored procedure, usp_LogEvent, to record the order insertion details in a log.  Furthermore, it calls a function, fn_GetOrderWithTax, to calculate the order total including tax, and logs this calculated amount via the same stored procedure.  This ensures that all new order creation events are logged, providing an audit trail and facilitating order tracking and analysis.
+This trigger, trg_AfterInsertOrder, automatically logs events whenever a new order is added to the Orders table.  Specifically, it records the insertion of a new order, including its ID and amount, via a stored procedure call (usp_LogEvent).  Furthermore, it calculates the order total including tax using a user-defined function (fn_GetOrderWithTax) and logs this calculated value using the same stored procedure.  This ensures that all new order insertions are tracked in a central log, providing an audit trail and potentially supporting business intelligence reporting.
 
 ---
 
