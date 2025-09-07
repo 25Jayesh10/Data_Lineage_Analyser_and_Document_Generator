@@ -40,7 +40,7 @@ def _initialize_openrouter():
 
 from cli_chat import prompt_user_for_llm_client as select_llm_provider, select_model_name
 
-def run_command_line_chat(lineage_path="../output/lineage1.json"):
+def run_command_line_chat(lineage_path="output\lineage1.json"):
     load_dotenv()
     llm_choice = select_llm_provider()
     model = select_model_name(llm_choice)
