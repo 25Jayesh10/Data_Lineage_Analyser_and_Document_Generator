@@ -79,9 +79,9 @@ def main():
     output_dir = "output"
     diagrams_dir = "output\diagrams" # Directory for the output diagram
 
-    index_path = os.path.join(input_dir, "index", "index6.json")  # Tool 1 output (already exists)
-    ast_path = os.path.join(input_dir, "ast", "ast6.json")      # Tool 2 output (already exists)
-    output_path = os.path.join(output_dir, "lineage6.json")   # Tool 4 output
+    index_path = os.path.join(input_dir, "index", "index3.json")  # Tool 1 output (already exists)
+    ast_path = os.path.join(input_dir, "ast", "ast3.json")      # Tool 2 output (already exists)
+    output_path = os.path.join(output_dir, "lineage3.json")   # Tool 4 output
 
     # ✅ Validation before running Tool 4
     print(Colours.YELLOW + "Validating index.json and ast.json against schemas..." + Colours.RESET)
@@ -100,8 +100,8 @@ def main():
     print(Colours.GREEN + "Generating Mermaid diagram from lineage data..." + Colours.RESET)
     
     # Define the path for the final diagram
-    mermaid_output_path = os.path.join(diagrams_dir, "lineage_diagram6.mmd")
-    markdown_path = os.path.join(diagrams_dir, "lineage_diagram6.md")
+    mermaid_output_path = os.path.join(diagrams_dir, "lineage_diagram3.mmd")
+    markdown_path = os.path.join(diagrams_dir, "lineage_diagram3.md")
     
     # Call the function with the lineage output as its input
     generate_lineage_diagram(output_path, mermaid_output_path)

@@ -54,42 +54,28 @@ graph TD
 
 1. Overall Purpose:
 
-The stored procedure AcmeERP.usp_CalculateFifoCost determines the cost of goods sold (COGS) for a given product using the First-In, First-Out (FIFO) inventory accounting method.  Its primary business goal is to accurately calculate the cost of a requested quantity of a specific product based on the order in which those products were received into inventory.  This is crucial for generating accurate financial reports and managing inventory effectively.
-
+The stored procedure AcmeERP.usp_CalculateFifoCost determines the cost of goods sold (COGS) for a given product using the First-In, First-Out (FIFO) inventory costing method.  This is crucial for accurate financial reporting and inventory management.
 
 2. Process Breakdown:
 
-Because no SQL code was provided, I can only describe the *expected* process based on the procedure's name and parameters.  The procedure would likely function as follows:
-
-a.  It receives a ProductID and a QuantityRequested as input.
-
-b. It queries the AcmeERP.StockMovements table. This table presumably tracks the movement of products in and out of inventory, recording each transaction with information such as the date, quantity, and cost of each batch.
-
-c. It iterates through the StockMovements records for the specified ProductID, starting with the oldest entries (First-In).
-
-d. For each record, it checks if adding the quantity in that record exceeds the QuantityRequested.
-
-e. If it does, it calculates the cost of the remaining QuantityRequested using the cost from that record and updates the QuantityRequested to 0, indicating the calculation is complete.
-
-f. If it doesn't, it adds the quantity to a running total and subtracts it from the QuantityRequested. It continues processing the next record until QuantityRequested reaches 0.
-
-g. Finally, it aggregates the calculated costs from each relevant record to determine the total COGS for the requested quantity. The total COGS is returned as the output.
-
+The procedure calculates the cost of goods sold based on the FIFO method.  While the provided SQL code is empty, we can infer the process:  The procedure likely retrieves the inventory movement history for a specific product (@@ProductID) from the AcmeERP.StockMovements table.  This table presumably tracks each instance of product movement, including the quantity and the cost at the time of the movement (e.g., purchase, sale).  The procedure then processes these movements chronologically, starting with the oldest inventory.  For each movement, it deducts the quantity requested (@@QuantityRequested) until the total quantity requested is fulfilled.  The cost of the goods sold is then calculated by summing the costs of the oldest inventory items used to satisfy the request. The specific calculation would depend on the structure of the StockMovements table.
 
 3. Key Business Rules:
 
-* FIFO Inventory Valuation: The procedure strictly adheres to the FIFO method, meaning the oldest inventory items are assumed to be sold first. This affects the cost of goods sold calculation and the value of remaining inventory.
-* Accurate Cost Tracking:  The procedure relies on the accuracy of the data in the StockMovements table.  Any errors or omissions in this table will directly impact the accuracy of the COGS calculation.
+* FIFO Inventory Costing: The primary business rule is the implementation of the FIFO method. This dictates that the oldest units of a product are assumed to be sold first.  This impacts the COGS calculation and therefore profitability.
+* Accurate Inventory Tracking: The underlying assumption is that the AcmeERP.StockMovements table accurately reflects all product movements.  Inaccurate data in this table will lead to inaccurate COGS calculations.
 
 
 4. Inputs and Outputs:
 
-* Inputs:
-    * @@ProductID: The unique identifier of the product for which COGS needs to be calculated.
-    * @@QuantityRequested: The quantity of the product for which COGS needs to be calculated.
+Inputs:
 
-* Outputs:
-    * The total cost of goods sold (COGS) for the specified product and quantity, based on the FIFO method.  This would likely be a single numeric value representing the total cost.
+* @@ProductID: The unique identifier for the product whose COGS needs to be calculated.
+* @@QuantityRequested: The quantity of the product sold for which the cost needs to be determined.
+
+Outputs:
+
+The procedure likely returns the total cost of the @@QuantityRequested units of the @@ProductID, calculated using the FIFO method.  This output would be used for financial reporting, inventory valuation, and other business applications requiring accurate cost information.  The procedure might also update inventory levels within the AcmeERP.StockMovements table to reflect the sale.
 
 ---
 
@@ -133,30 +119,32 @@ graph TD
 
 1. Overall Purpose:
 
-The stored procedure AcmeERP.usp_ConvertToBase converts an amount of money from a specified currency into the company's base currency.  This is crucial for financial reporting and analysis, ensuring all financial data is standardized for accurate comparisons and decision-making.
+The stored procedure AcmeERP.usp_ConvertToBase converts an amount from a given currency to the base currency of Acme ERP system.  This is crucial for generating accurate financial reports, comparing performance across different regions or subsidiaries, and ensuring consistency in financial data.
+
 
 2. Process Breakdown:
 
-The procedure takes three inputs: the currency code of the amount to be converted (@@CurrencyCode), the amount itself (@@Amount), and the date of the conversion (@@ConversionDate).  It then uses this information to look up the appropriate exchange rate from the AcmeERP.ExchangeRates table.  This table presumably stores historical exchange rates for various currencies against the base currency.  The procedure uses the @@ConversionDate to find the correct exchange rate on that specific day, ensuring accuracy. Finally, it calculates the equivalent amount in the base currency by multiplying the input amount by the retrieved exchange rate. The result, the amount in the base currency, is then implicitly returned (though the exact return mechanism isn't shown in the provided code).  This converted amount can then be used for various accounting or reporting purposes within the AcmeERP system.
+The procedure takes three inputs: the currency code (@@CurrencyCode), the amount (@@Amount), and the conversion date (@@ConversionDate).  It uses the provided date to look up the appropriate exchange rate from the AcmeERP.ExchangeRates table.  This table presumably stores historical exchange rates for various currencies against the base currency. The procedure then multiplies the input amount by the retrieved exchange rate to convert it into the base currency.  The result, the equivalent amount in the base currency, is returned.  If an exchange rate for the specified currency and date is not found, the procedure might return an error or handle it appropriately (this detail is not available given the missing SQL code).
 
 
 3. Key Business Rules:
 
-*   The exchange rate used for conversion is based on the provided conversion date. This ensures that the conversion reflects the actual exchange rate applicable on that specific day.  This is important for accurate financial records.
-*   The procedure implicitly assumes that the AcmeERP.ExchangeRates table contains all necessary exchange rates for all relevant currencies and dates.  Data quality in this table is crucial for the accuracy of the conversions.
-*   Error handling (for instance, if the exchange rate is not found for the given currency and date) is not explicitly described but would be necessary in a production environment.  The procedure needs to handle cases where there is no exchange rate data available.
+* Exchange rates are stored historically: The system acknowledges that exchange rates fluctuate over time, and uses a specific date to ensure accurate conversions.
+* Accurate currency conversion is essential: The process emphasizes that all financial data must be represented in a consistent base currency for reliable analysis and reporting.
+* Data integrity relies on exchange rate availability: The system depends on having complete and accurate exchange rate data in the ExchangeRates table.  Any missing or incorrect data could lead to flawed financial reporting.
+
 
 4. Inputs and Outputs:
 
 Inputs:
 
-*   @@CurrencyCode: The three-letter ISO code of the currency to be converted (e.g., USD, EUR, JPY).
-*   @@Amount: The numerical amount in the specified currency.
-*   @@ConversionDate: The date for which the exchange rate should be used.
+* @@CurrencyCode: The three-letter ISO code of the currency to be converted (e.g., USD, EUR, GBP).
+* @@Amount: The numerical amount in the specified currency to be converted.
+* @@ConversionDate: The date for which the exchange rate should be used.
 
 Outputs:
 
-*   The procedure implicitly returns the equivalent amount in the company's base currency.  The exact return mechanism is not shown but is implied by the process description.
+* The equivalent amount in the Acme ERP's base currency.  The data type of this output is implied to be numeric (likely decimal or float).  If an error occurs, it may return an error code or message indicating the failure.
 
 ---
 
@@ -203,40 +191,24 @@ graph TD
 
 1. Overall Purpose:
 
-The stored procedure AcmeERP.usp_ProcessFullPayrollCycle automates the entire payroll process for Acme ERP for a given pay period.  Its primary goal is to accurately and efficiently calculate and record employee compensation for that period, ensuring timely and correct payment.
+The stored procedure AcmeERP.usp_ProcessFullPayrollCycle automates the complete payroll processing for a given pay period.  Its primary goal is to accurately and efficiently calculate employee wages, accounting for currency exchange rates where necessary, and record the payroll transactions for auditing purposes.
 
 2. Process Breakdown:
 
-This procedure likely performs the following steps:
+This procedure calculates payroll for all employees for a specified pay period, defined by the input parameters @@PayPeriodStart and @@PayPeriodEnd.  It likely retrieves employee information (like salary, tenure, etc.) from the AcmeERP.Employees table.  It then calculates gross pay for each employee based on their base salary and any applicable bonuses or other compensation.  The procedure probably considers different compensation schemes, perhaps based on employee roles or performance metrics (although the details aren't available in the provided code).
 
-a. It retrieves employee information (e.g., salary, employment date, bank details) from the AcmeERP.Employees table for all employees.
-
-b. It identifies the applicable pay period based on the input parameters @@PayPeriodStart and @@PayPeriodEnd.
-
-c. It calculates gross pay for each employee, considering their salary and potentially other compensation elements (bonuses, commissions, etc.).  This might involve calculations based on hours worked (though this is not explicitly shown in the context) or other criteria.
-
-d. It fetches relevant exchange rates from the AcmeERP.ExchangeRates table if employees are paid in different currencies. This step ensures that payments are accurately converted to the employee's local currency.
-
-e. It calculates deductions (taxes, social security contributions, etc.) based on relevant tax laws and employee information.  The specific deductions and their calculation methods are not provided but are implicitly part of a full payroll cycle.
-
-f. It calculates net pay (gross pay minus deductions).
-
-g. It creates a record of the payroll process for each employee in the AcmeERP.PayrollLogs table. This log contains details of the gross pay, deductions, and net pay, serving as an audit trail for financial reporting and reconciliation.
-
+If employees have worked internationally, it will likely fetch applicable exchange rates from the AcmeERP.ExchangeRates table to convert foreign currency earnings into the company's base currency.  Finally, the procedure writes a detailed record of each employee's payroll calculation (gross pay, deductions, net pay, etc.) into the AcmeERP.PayrollLogs table. This ensures a complete audit trail of all payroll transactions.
 
 3. Key Business Rules:
 
-Without the SQL code, specific business rules cannot be definitively listed. However, a full payroll process typically involves many rules, including:
+Without access to the SQL code, specific business rules can only be hypothesized.  Likely rules include:
 
-a. Tax rules:  Different tax brackets and rates may apply based on earnings, employee location, and tax laws.
+* Calculation of gross pay based on hourly rate or salary, plus bonuses and overtime.
+* Deduction of taxes, social security contributions, and other mandatory deductions based on local and national regulations.
+* Application of currency exchange rates to employee earnings in foreign currencies, using rates valid on the payment date.
+* Potential rules for handling different pay frequencies (weekly, bi-weekly, monthly).
+* Possibly, rules for calculating bonuses based on employee tenure, performance, or other criteria.
 
-b. Deduction rules: Rules for calculating deductions (e.g., health insurance premiums, retirement plan contributions) based on employee elections and plan details.
-
-c. Bonus and commission calculations:  Rules for calculating bonuses based on performance, tenure, or other criteria.
-
-d. Overtime rules: Calculating overtime pay according to labor laws.
-
-e. Currency conversion rules: Rules for converting salaries paid in different currencies based on prevailing exchange rates.
 
 4. Inputs and Outputs:
 
@@ -245,10 +217,9 @@ Inputs:
 * @@PayPeriodStart: The start date of the pay period.
 * @@PayPeriodEnd: The end date of the pay period.
 
-
 Outputs:
 
-* Updated AcmeERP.PayrollLogs table: Contains detailed records of the payroll calculations for each employee for the specified pay period. This serves as the primary output and is used for generating payslips, reporting, and financial accounting.  The procedure does not directly output data to the user; it updates the database table.
+The procedure's primary output is a detailed record in the AcmeERP.PayrollLogs table, storing payroll information for each employee for the specified pay period. This table will likely include entries for gross pay, net pay, various deductions, and any relevant currency conversions.  There is no direct output to the user interface; the procedure updates the database table.
 
 ---
 

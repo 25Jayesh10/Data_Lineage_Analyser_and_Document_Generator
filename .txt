@@ -690,3 +690,315 @@ def analyze_lineage(index_file :str, ast_file :str, output_file :str):
         print(f"{Colours.RED}Output file '{output_file}' was NOT created due to validation error.{Colours.RESET}")
     except Exception as e:
         print(f"{Colours.RED}An unexpected error occurred during final validation or writing: {e}{Colours.RESET}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{
+  "procedures": [
+    {
+      "proc_name": "usp_LogEvent",
+      "params": [
+        {
+          "name": "@eventType",
+          "type": "VARCHAR(50)",
+          "mode": "IN"
+        },
+        {
+          "name": "@message",
+          "type": "VARCHAR(200)",
+          "mode": "IN"
+        }
+      ],
+      "return_type": "VOID",
+      "variables": [],
+      "statements": [
+        {
+          "type": "INSERT",
+          "table": "AuditLog",
+          "columns": [
+            "EventType",
+            "EventMessage"
+          ],
+          "values": [
+            "@eventType",
+            "@message"
+          ]
+        }
+      ]
+    },
+    {
+      "proc_name": "usp_UpdateOrderStatus",
+      "params": [
+        {
+          "name": "@orderId",
+          "type": "INT",
+          "mode": "IN"
+        },
+        {
+          "name": "@newStatus",
+          "type": "VARCHAR(20)",
+          "mode": "IN"
+        }
+      ],
+      "return_type": "VOID",
+      "variables": [],
+      "statements": [
+        {
+          "type": "UPDATE",
+          "table": "Orders",
+          "set": {
+            "Status": "@newStatus"
+          },
+          "where": {
+            "op": "=",
+            "left": "OrderID",
+            "right": "@orderId"
+          }
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_LogEvent",
+          "args": [
+            "'ORDER_UPDATE'",
+            "'Order ' + CONVERT(VARCHAR, @orderId) + ' status changed to ' + @newStatus"
+          ]
+        }
+      ]
+    },
+    {
+      "proc_name": "usp_CloseOrder",
+      "params": [
+        {
+          "name": "@orderId",
+          "type": "INT",
+          "mode": "IN"
+        }
+      ],
+      "return_type": "VOID",
+      "variables": [],
+      "statements": [
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_UpdateOrderStatus",
+          "args": [
+            "@orderId",
+            "'CLOSED'"
+          ]
+        }
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "func_name": "fn_GetOrderTotalWithAudit",
+      "params": [
+        {
+          "name": "@orderId",
+          "type": "INT",
+          "mode": "IN"
+        }
+      ],
+      "return_type": "DECIMAL(18,2)",
+      "variables": [
+        {
+          "name": "@amount",
+          "type": "DECIMAL(18,2)"
+        }
+      ],
+      "statements": [
+        {
+          "type": "SELECT_INTO",
+          "into_vars": [
+            "@amount"
+          ],
+          "query": {
+            "type": "SELECT",
+            "columns": [
+              "Amount"
+            ],
+            "from": "Orders",
+            "where": {
+              "op": "=",
+              "left": "OrderID",
+              "right": "@orderId"
+            }
+          }
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_LogEvent",
+          "args": [
+            "'FUNCTION_CALL'",
+            "'fn_GetOrderTotalWithAudit called for Order ' + CONVERT(VARCHAR, @orderId)"
+          ]
+        },
+        {
+          "type": "RETURN",
+          "expression": "@amount"
+        }
+      ]
+    },
+    {
+      "func_name": "fn_GetOrderWithTax",
+      "params": [
+        {
+          "name": "@orderId",
+          "type": "INT",
+          "mode": "IN"
+        }
+      ],
+      "return_type": "DECIMAL(18,2)",
+      "variables": [
+        {
+          "name": "@baseAmount",
+          "type": "DECIMAL(18,2)"
+        },
+        {
+          "name": "@withTax",
+          "type": "DECIMAL(18,2)"
+        }
+      ],
+      "statements": [
+        {
+          "type": "SET",
+          "name": "@baseAmount",
+          "value": {
+            "op": "FUNCTION_CALL",
+            "left": "dbo.fn_GetOrderTotalWithAudit",
+            "right": [
+              "@orderId"
+            ]
+          }
+        },
+        {
+          "type": "SET",
+          "name": "@withTax",
+          "value": {
+            "op": "*",
+            "left": "@baseAmount",
+            "right": "1.1"
+          }
+        },
+        {
+          "type": "RETURN",
+          "expression": "@withTax"
+        }
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "trigger_name": "trg_AfterInsertOrder",
+      "on_table": "Orders",
+      "event": "AFTER INSERT",
+      "statements": [
+        {
+          "type": "DECLARE",
+          "name": "@orderId",
+          "value": "INT"
+        },
+        {
+          "type": "DECLARE",
+          "name": "@amount",
+          "value": "DECIMAL(18,2)"
+        },
+        {
+          "type": "SELECT_INTO",
+          "into_vars": [
+            "@orderId",
+            "@amount"
+          ],
+          "query": {
+            "type": "SELECT",
+            "columns": [
+              "OrderID",
+              "Amount"
+            ],
+            "from": "INSERTED"
+          }
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_LogEvent",
+          "args": [
+            "'TRIGGER_INSERT'",
+            "'New order ' + CONVERT(VARCHAR, @orderId) + ' inserted with amount ' + CONVERT(VARCHAR, @amount)"
+          ]
+        },
+        {
+          "type": "DECLARE",
+          "name": "@totalWithTax",
+          "value": "DECIMAL(18,2)"
+        },
+        {
+          "type": "SET",
+          "name": "@totalWithTax",
+          "value": {
+            "op": "FUNCTION_CALL",
+            "left": "dbo.fn_GetOrderWithTax",
+            "right": [
+              "@orderId"
+            ]
+          }
+        },
+        {
+          "type": "EXECUTE_PROCEDURE",
+          "name": "usp_LogEvent",
+          "args": [
+            "'TRIGGER_FUNCTION_CALL'",
+            "'Order ' + CONVERT(VARCHAR, @orderId) + ' total with tax: ' + CONVERT(VARCHAR, @totalWithTax)"
+          ]
+        }
+      ]
+    }
+  ]
+}

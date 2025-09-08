@@ -24,12 +24,13 @@ def _initialize_azure():
     try:
         return openai.AzureOpenAI(
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-            api_version="2024-02-01",
-            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),  # default if not set
         )
     except KeyError as e:
         print(f"❌ Error: {e} not found in .env file for Azure configuration.")
         return None
+
 
 
 def _initialize_anthropic():
@@ -41,11 +42,25 @@ def _initialize_anthropic():
         return None
 
 
+def _initialize_openrouter():
+    """Initializes and returns the OpenRouter API key."""
+    try:
+        api_key = os.getenv("OPEN_ROUTER")
+        if not api_key:
+            raise KeyError("OPEN_ROUTER")
+        return api_key
+    except KeyError:
+        print("❌ Error: OPENROUTER_API_KEY not found in .env file.")
+        return None
+
+
 def _generate_with_gemini(prompt: str) -> str:
     """Generates content using Google Gemini."""
     model = _initialize_gemini()
+    
     if not model:
         return "Description generation failed due to missing Gemini API key."
+    
     try:
         response = model.generate_content(prompt)
         return response.text.strip()
@@ -57,17 +72,20 @@ def _generate_with_azure(prompt: str) -> str:
     """Generates content using Azure OpenAI."""
     azure_client = _initialize_azure()
     deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
-    if not azure_client or not deployment_name:
-        return "Description generation failed due to missing Azure configuration."
+
+    if not azure_client:
+        return "Description generation failed due to missing Azure API key or endpoint."
+
     try:
         response = azure_client.chat.completions.create(
-            model=deployment_name,
+            model=deployment_name,  # 👈 deployment name used here
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Description could not be generated due to an Azure API error: {e}"
+
 
 
 def _generate_with_anthropic(prompt: str) -> str:
@@ -84,18 +102,6 @@ def _generate_with_anthropic(prompt: str) -> str:
         return response.content[0].text.strip()
     except Exception as e:
         return f"Description could not be generated due to an Anthropic API error: {e}"
-
-
-def _initialize_openrouter():
-    """Initializes and returns the OpenRouter API key."""
-    try:
-        api_key = os.getenv("OPEN_ROUTER")
-        if not api_key:
-            raise KeyError("OPEN_ROUTER")
-        return api_key
-    except KeyError:
-        print("❌ Error: OPENROUTER_API_KEY not found in .env file.")
-        return None
 
 
 def _generate_with_openrouter(prompt: str, model: str = "mistralai/mistral-small-3.2-24b-instruct:free") -> str:
