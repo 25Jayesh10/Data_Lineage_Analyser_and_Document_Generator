@@ -8,7 +8,7 @@ def main():
     # Define file paths
     input_dir = "input/index"
     document_dir = "output/documents"
-    index_path = os.path.join(input_dir, "index6.json")
+    index_path = os.path.join(input_dir, "index2.json")
 
     # ✅ Tool 3: Generate Markdown documentation
     try:

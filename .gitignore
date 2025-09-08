@@ -1,1 +1,4 @@
 .env
+lineage_chat_bot\__pycache__
+Tool3\__pycache__
+Tool4\src\__pycache__

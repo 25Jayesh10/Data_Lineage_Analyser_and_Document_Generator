@@ -4,7 +4,7 @@ load_dotenv()
 
 def prompt_user_for_llm_client():
     """This function asks the user to select the LLM client like Gemini, OpenAI, Anthropic """
-    providers = {"1": "gemini", "2": "azure", "3": "openai", "4": "openrouter"}
+    providers = {"1": "gemini", "2": "azure openai", "3": "openai", "4": "openrouter"}
     print("\nPlease select an LLM provider to generate descriptions:")
     for key, value in providers.items():
         print(f"  {key}: {value.capitalize()}")
@@ -26,12 +26,10 @@ def select_model_name(llm_choice):
             "2": "gemini-1.5-flash"
         }
         menu = [f"  {k}: {v}" for k, v in models.items()]
-    elif llm_choice == "azure":
+    elif llm_choice == "azure openai":
         models = {
-            "1": "gpt-4o",
-            "2": "gpt-4-turbo",
-            "3": "gpt-4",
-            "4": "gpt-3.5-turbo"
+            "1": "gpt-35-turbo"
+             
         }
         menu = [f"  {k}: {v}" for k, v in models.items()]
     elif llm_choice == "openai":

@@ -24,7 +24,7 @@ def _initialize_azure():
     try:
         return openai.AzureOpenAI(
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-            api_version="2024-02-01",
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
         )
     except Exception as e:
@@ -38,9 +38,9 @@ def _initialize_openrouter():
         return None
     return api_key
 
-from cli_chat import prompt_user_for_llm_client as select_llm_provider, select_model_name
+from lineage_chat_bot.cli_chat import prompt_user_for_llm_client as select_llm_provider, select_model_name
 
-def run_command_line_chat(lineage_path="output\lineage1.json"):
+def run_command_line_chat(lineage_path="./output/lineage1.json"):
     load_dotenv()
     llm_choice = select_llm_provider()
     model = select_model_name(llm_choice)
@@ -49,7 +49,7 @@ def run_command_line_chat(lineage_path="output\lineage1.json"):
         client = _initialize_openai()
     elif llm_choice == "gemini":
         client = _initialize_gemini()
-    elif llm_choice == "azure":
+    elif llm_choice == "azure openai":
         client = _initialize_azure()
     elif llm_choice == "openrouter":
         client = _initialize_openrouter()
@@ -80,12 +80,15 @@ def run_command_line_chat(lineage_path="output\lineage1.json"):
                     messages=messages
                 )
                 answer = response.choices[0].message.content
-            elif llm_choice == "azure":
-                response = client.chat.completions.create(
-                    model=model,
-                    messages=messages
-                )
-                answer = response.choices[0].message.content
+            elif llm_choice == "azure openai":
+                    azure_deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+                    if azure_deployment_name:
+                    # Use deployment name for Azure OpenAI
+                        response = client.chat.completions.create(
+                            model=azure_deployment_name,
+                            messages=messages
+                        )
+                    answer = response.choices[0].message.content
             elif llm_choice == "gemini":
                 # Gemini expects a single string prompt, so concatenate context
                 prompt = '\n'.join([m['content'] for m in messages if m['role'] in ['user', 'assistant']])

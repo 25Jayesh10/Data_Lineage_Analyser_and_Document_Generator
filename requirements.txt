@@ -1,6 +1,8 @@
 google-generativeai
+google-genai
 openai
 anthropic
 python-dotenv
 requests
 jsonschema
+streamlit
