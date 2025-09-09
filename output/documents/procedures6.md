@@ -57,6 +57,7 @@ graph TD
 
 1. Overall Purpose:
 
+<<<<<<< HEAD
 The primary business goal of the stored procedure `usp_LogEvent` is to record important events that occur within the system.  This helps maintain an audit trail for tracking system activity, troubleshooting issues, and ensuring accountability.
 
 2. Process Breakdown:
@@ -66,17 +67,108 @@ This procedure automates the logging of system events.  It takes two pieces of i
 3. Key Business Rules:
 
 The primary business rule is that all significant events within the system must be logged. This ensures that the system's actions are auditable and allows for investigation of any potential issues or irregularities. There are no other explicit business rules embedded within this procedure's logic; the specific criteria for what constitutes a "significant event" is determined outside of this procedure.
+=======
+The stored procedure AcmeERP.usp_CalculateFifoCost determines the cost of goods sold (COGS) for a given product using the First-In, First-Out (FIFO) inventory costing method.  This is crucial for accurate financial reporting and inventory management.
+
+2. Process Breakdown:
+
+The procedure calculates the cost of goods sold based on the FIFO method.  While the provided SQL code is empty, we can infer the process:  The procedure likely retrieves the inventory movement history for a specific product (@@ProductID) from the AcmeERP.StockMovements table.  This table presumably tracks each instance of product movement, including the quantity and the cost at the time of the movement (e.g., purchase, sale).  The procedure then processes these movements chronologically, starting with the oldest inventory.  For each movement, it deducts the quantity requested (@@QuantityRequested) until the total quantity requested is fulfilled.  The cost of the goods sold is then calculated by summing the costs of the oldest inventory items used to satisfy the request. The specific calculation would depend on the structure of the StockMovements table.
+
+3. Key Business Rules:
+
+* FIFO Inventory Costing: The primary business rule is the implementation of the FIFO method. This dictates that the oldest units of a product are assumed to be sold first.  This impacts the COGS calculation and therefore profitability.
+* Accurate Inventory Tracking: The underlying assumption is that the AcmeERP.StockMovements table accurately reflects all product movements.  Inaccurate data in this table will lead to inaccurate COGS calculations.
+
 
 4. Inputs and Outputs:
 
 Inputs:
 
+* @@ProductID: The unique identifier for the product whose COGS needs to be calculated.
+* @@QuantityRequested: The quantity of the product sold for which the cost needs to be determined.
+
+Outputs:
+
+The procedure likely returns the total cost of the @@QuantityRequested units of the @@ProductID, calculated using the FIFO method.  This output would be used for financial reporting, inventory valuation, and other business applications requiring accurate cost information.  The procedure might also update inventory levels within the AcmeERP.StockMovements table to reflect the sale.
+
+---
+
+
+## Procedure: AcmeERP.usp_ConvertToBase
+<a name="acmeerpusp_converttobase"></a>
+
+---
+
+### Parameters
+
+| Name | Type |
+|------|------|
+| @CurrencyCode | CHAR(3) |
+| @Amount | DECIMAL(18,2) |
+| @ConversionDate | DATE |
+
+---
+
+### Tables
+
+- AcmeERP.ExchangeRates
+
+---
+
+### Calls
+
+
+---
+
+### Call Graph
+
+```mermaid
+graph TD
+    AcmeERP.usp_ConvertToBase --> AcmeERP.ExchangeRates
+```
+
+---
+
+### Business Logic
+
+1. Overall Purpose:
+
+The stored procedure AcmeERP.usp_ConvertToBase converts an amount from a given currency to the base currency of Acme ERP system.  This is crucial for generating accurate financial reports, comparing performance across different regions or subsidiaries, and ensuring consistency in financial data.
+
+
+2. Process Breakdown:
+
+The procedure takes three inputs: the currency code (@@CurrencyCode), the amount (@@Amount), and the conversion date (@@ConversionDate).  It uses the provided date to look up the appropriate exchange rate from the AcmeERP.ExchangeRates table.  This table presumably stores historical exchange rates for various currencies against the base currency. The procedure then multiplies the input amount by the retrieved exchange rate to convert it into the base currency.  The result, the equivalent amount in the base currency, is returned.  If an exchange rate for the specified currency and date is not found, the procedure might return an error or handle it appropriately (this detail is not available given the missing SQL code).
+
+
+3. Key Business Rules:
+
+* Exchange rates are stored historically: The system acknowledges that exchange rates fluctuate over time, and uses a specific date to ensure accurate conversions.
+* Accurate currency conversion is essential: The process emphasizes that all financial data must be represented in a consistent base currency for reliable analysis and reporting.
+* Data integrity relies on exchange rate availability: The system depends on having complete and accurate exchange rate data in the ExchangeRates table.  Any missing or incorrect data could lead to flawed financial reporting.
+
+>>>>>>> 658cd9299cb4aca603a5573455b1e9f3108e51ca
+
+4. Inputs and Outputs:
+
+Inputs:
+
+<<<<<<< HEAD
 * `@eventType`: A description of the type of event that occurred (e.g., "User Login", "Order Placed", "Payment Processed").
 * `@message`: A more detailed message providing context about the event (e.g., "User John Doe logged in successfully.", "Order #12345 was placed by Jane Doe.", "Payment of $100.00 was received for order #67890").
 
 Outputs:
 
 The procedure doesn't directly produce any output in the sense of a report or result set.  Its output is the addition of a new row to the `AuditLog` table, recording the event details.  This stored log is then available for querying and analysis at a later time.
+=======
+* @@CurrencyCode: The three-letter ISO code of the currency to be converted (e.g., USD, EUR, GBP).
+* @@Amount: The numerical amount in the specified currency to be converted.
+* @@ConversionDate: The date for which the exchange rate should be used.
+
+Outputs:
+
+* The equivalent amount in the Acme ERP's base currency.  The data type of this output is implied to be numeric (likely decimal or float).  If an error occurs, it may return an error code or message indicating the failure.
+>>>>>>> 658cd9299cb4aca603a5573455b1e9f3108e51ca
 
 ---
 
@@ -121,6 +213,7 @@ graph TD
 
 1. Overall Purpose:
 
+<<<<<<< HEAD
 The primary business goal of the stored procedure `usp_UpdateOrderStatus` is to efficiently and reliably update the status of an order in the system and record this change in the system's event log.  This ensures accurate order tracking and provides an audit trail of all order status modifications.
 
 2. Process Breakdown:
@@ -132,11 +225,32 @@ This procedure automates the process of changing an order's status.  It takes th
 *   There is an implicit business rule that assumes the provided `@orderId` exists in the 'Orders' table. While not explicitly checked in this procedure, a valid order ID is expected to be passed.  Error handling for non-existent order IDs would likely be implemented elsewhere.
 *   The procedure assumes the `@newStatus` value is valid within the system's predefined set of order statuses. No validation is performed within this procedure itself.  Data validation is likely handled in the application layer calling this procedure.
 *   The procedure guarantees that any update to an order's status will also be logged for auditing purposes.  This is a crucial business rule for accountability and traceability.
+=======
+The stored procedure AcmeERP.usp_ProcessFullPayrollCycle automates the complete payroll processing for a given pay period.  Its primary goal is to accurately and efficiently calculate employee wages, accounting for currency exchange rates where necessary, and record the payroll transactions for auditing purposes.
+
+2. Process Breakdown:
+
+This procedure calculates payroll for all employees for a specified pay period, defined by the input parameters @@PayPeriodStart and @@PayPeriodEnd.  It likely retrieves employee information (like salary, tenure, etc.) from the AcmeERP.Employees table.  It then calculates gross pay for each employee based on their base salary and any applicable bonuses or other compensation.  The procedure probably considers different compensation schemes, perhaps based on employee roles or performance metrics (although the details aren't available in the provided code).
+
+If employees have worked internationally, it will likely fetch applicable exchange rates from the AcmeERP.ExchangeRates table to convert foreign currency earnings into the company's base currency.  Finally, the procedure writes a detailed record of each employee's payroll calculation (gross pay, deductions, net pay, etc.) into the AcmeERP.PayrollLogs table. This ensures a complete audit trail of all payroll transactions.
+
+3. Key Business Rules:
+
+Without access to the SQL code, specific business rules can only be hypothesized.  Likely rules include:
+
+* Calculation of gross pay based on hourly rate or salary, plus bonuses and overtime.
+* Deduction of taxes, social security contributions, and other mandatory deductions based on local and national regulations.
+* Application of currency exchange rates to employee earnings in foreign currencies, using rates valid on the payment date.
+* Potential rules for handling different pay frequencies (weekly, bi-weekly, monthly).
+* Possibly, rules for calculating bonuses based on employee tenure, performance, or other criteria.
+
+>>>>>>> 658cd9299cb4aca603a5573455b1e9f3108e51ca
 
 4. Inputs and Outputs:
 
 Inputs:
 
+<<<<<<< HEAD
 *   `@orderId`: The unique identifier of the order to be updated. This is an integer.
 *   `@newStatus`: The new status for the order (e.g., "Shipped", "Cancelled", "Delivered"). This is a text string.
 
@@ -377,6 +491,14 @@ The trigger itself doesn't explicitly contain business rules, but it relies on t
 Inputs: The trigger's input is implicit.  It automatically receives the data from the `INSERTED` table which contains information about the newly inserted row in the Orders table. This includes, at least, the OrderID and Amount fields.
 
 Outputs: The trigger doesn't directly produce any output in the traditional sense (like returning values).  Its primary output is the creation of two log entries within the system's logging mechanism (via `usp_LogEvent`). These log entries provide an audit trail tracking new order creation and including the calculated total amount with tax for each order.
+=======
+* @@PayPeriodStart: The start date of the pay period.
+* @@PayPeriodEnd: The end date of the pay period.
+
+Outputs:
+
+The procedure's primary output is a detailed record in the AcmeERP.PayrollLogs table, storing payroll information for each employee for the specified pay period. This table will likely include entries for gross pay, net pay, various deductions, and any relevant currency conversions.  There is no direct output to the user interface; the procedure updates the database table.
+>>>>>>> 658cd9299cb4aca603a5573455b1e9f3108e51ca
 
 ---
 

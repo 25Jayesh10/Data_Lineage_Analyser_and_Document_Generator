@@ -28,23 +28,23 @@ graph TD
 
     %% --- Node Definitions --- %%
 
-    subgraph dbo_AuditLog["dbo.AuditLog"]
+    subgraph sg_dbo_AuditLog["dbo.AuditLog"]
         dbo_AuditLog_EventMessage["EventMessage"];
         class dbo_AuditLog_EventMessage column;
         dbo_AuditLog_EventType["EventType"];
         class dbo_AuditLog_EventType column;
     end
-    class dbo_AuditLog table;
+    class sg_dbo_AuditLog table;
 
-    subgraph dbo_INSERTED["dbo.INSERTED"]
+    subgraph sg_dbo_INSERTED["dbo.INSERTED"]
         dbo_INSERTED_Amount["Amount"];
         class dbo_INSERTED_Amount column;
         dbo_INSERTED_OrderID["OrderID"];
         class dbo_INSERTED_OrderID column;
     end
-    class dbo_INSERTED table;
+    class sg_dbo_INSERTED table;
 
-    subgraph dbo_Orders["dbo.Orders"]
+    subgraph sg_dbo_Orders["dbo.Orders"]
         dbo_Orders_Amount["Amount"];
         class dbo_Orders_Amount column;
         dbo_Orders_OrderID["OrderID"];
@@ -56,7 +56,7 @@ graph TD
         dbo_Orders_orderId["orderId"];
         class dbo_Orders_orderId column;
     end
-    class dbo_Orders table;
+    class sg_dbo_Orders table;
     dbo_fn_GetOrderTotalWithAudit("dbo.fn_GetOrderTotalWithAudit");
     class dbo_fn_GetOrderTotalWithAudit function;
     dbo_fn_GetOrderWithTax("dbo.fn_GetOrderWithTax");
