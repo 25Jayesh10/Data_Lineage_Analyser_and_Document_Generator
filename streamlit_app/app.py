@@ -2,6 +2,9 @@ import streamlit as st
 import sys
 import os
 import json
+from dotenv import load_dotenv
+load_dotenv()
+# The llm calls which are happening here can happen in a seperate service file
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from lineage_chat_bot.cli_chat_service import (
@@ -36,7 +39,7 @@ def get_models_for_provider(llm_choice):
     elif llm_choice == "openai":
         return ["gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"]
     elif llm_choice == "openrouter":
-        return ["openrouter/gpt-4o", "openrouter/gpt-4-turbo", "openrouter/gemini-pro"]
+        return ["mistralai/mistral-small-3.2-24b-instruct:free"]
     else:
         return []
 
@@ -101,12 +104,29 @@ if st.session_state.get("chat_started"):
             elif provider == "openrouter":
                 import requests
                 api_key = _initialize_openrouter()
-                headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-                payload = {"model": model, "messages": st.session_state["messages"], "temperature": 0.7}
-                resp = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
-                resp.raise_for_status()
-                data = resp.json()
-                answer = data["choices"][0]["message"]["content"]
+                if not api_key:
+                    answer = "Description generation failed due to missing OpenRouter API key."
+                else:
+                    headers = {
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json"
+                    }
+                    payload = {
+                        "model": model,
+                        "messages": st.session_state["messages"],
+                        "temperature": 0.7
+                    }
+                    try:
+                        resp = requests.post(
+                            url="https://openrouter.ai/api/v1/chat/completions",
+                            headers=headers,
+                            json=payload
+                        )
+                        resp.raise_for_status()
+                        data = resp.json()
+                        answer = data["choices"][0]["message"]["content"].strip()
+                    except Exception as e:
+                        answer = f"Description could not be generated due to an OpenRouter API error: {e}"
             else:
                 answer = "Unknown LLM provider."
         except Exception as e:
