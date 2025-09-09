@@ -1002,3 +1002,184 @@ def analyze_lineage(index_file :str, ast_file :str, output_file :str):
     }
   ]
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{
+  "procedures": [
+    {
+      "proc_name": "usp_LogEvent",
+      "params": [
+        {
+          "name": "@eventType",
+          "type": "VARCHAR(50)",
+          "mode": "IN"
+        },
+        {
+          "name": "@message",
+          "type": "VARCHAR(200)",
+          "mode": "IN"
+        }
+      ],
+      "variables": [],
+      "return_type": "VOID",
+      "statements": [
+        {
+          "type": "INSERT",
+          "table": "AuditLog",
+          "columns": [
+            "EventType",
+            "EventMessage"
+          ],
+          "query": "INSERT INTO AuditLog(EventType, EventMessage) VALUES (@eventType, @message)"
+        }
+      ]
+    },
+    {
+      "proc_name": "usp_UpdateOrderStatus",
+      "params": [
+        {
+          "name": "@orderId",
+          "type": "INT",
+          "mode": "IN"
+        },
+        {
+          "name": "@newStatus",
+          "type": "VARCHAR(20)",
+          "mode": "IN"
+        }
+      ],
+      "variables": [],
+      "return_type": "VOID",
+      "statements": []
+    },
+    {
+      "proc_name": "usp_CloseOrder",
+      "params": [
+        {
+          "name": "@orderId",
+          "type": "INT",
+          "mode": "IN"
+        }
+      ],
+      "variables": [],
+      "return_type": "VOID",
+      "statements": []
+    }
+  ],
+  "functions": [
+    {
+      "func_name": "fn_GetOrderTotalWithAudit",
+      "params": [],
+      "return_type": "DECIMAL(18,2)",
+      "variables": [
+        {
+          "name": "@amount",
+          "type": "TEXT"
+        }
+      ],
+      "statements": [
+        {
+          "type": "SELECT_INTO",
+          "table": "Orders",
+          "columns": [
+            "Amount"
+          ],
+          "into_vars": [
+            "@amount"
+          ],
+          "query": "SELECT @amount = Amount FROM Orders WHERE OrderID = @orderId"
+        }
+      ]
+    },
+    {
+      "func_name": "fn_GetOrderWithTax",
+      "params": [],
+      "return_type": "DECIMAL(18,2)",
+      "variables": [
+        {
+          "name": "@baseAmount",
+          "type": "TEXT"
+        },
+        {
+          "name": "@withTax",
+          "type": "DECIMAL(18,2)"
+        }
+      ],
+      "statements": [
+        {
+          "type": "SET",
+          "name": "@baseAmount",
+          "value": "dbo.fn_GetOrderTotalWithAudit(@orderId)"
+        }
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "trigger_name": "trg_AfterInsertOrder",
+      "on_table": "Orders",
+      "event": "INSERT",
+      "statements": [
+        {
+          "type": "SELECT_INTO",
+          "table": "INSERTED",
+          "columns": [
+            "OrderID, @amount = Amount"
+          ],
+          "into_vars": [
+            "@orderId"
+          ],
+          "query": "SELECT @orderId = OrderID, @amount = Amount FROM INSERTED"
+        },
+        {
+          "type": "SET",
+          "name": "@totalWithTax",
+          "value": "dbo.fn_GetOrderWithTax(@orderId)"
+        }
+      ]
+    }
+  ]
+}
