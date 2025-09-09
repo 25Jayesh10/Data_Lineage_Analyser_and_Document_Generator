@@ -303,21 +303,19 @@ def extract_sql_blocks(sql_text):
 
     return results
 
-
 def prompt_for_llm_provider():
     """Interactively prompts the user to select an LLM provider."""
-    providers = {"1": "gemini", "2": "azure", "3": "anthropic", "4": "openrouter"}
+    providers = {"1": "gemini", "2": "azure", "3": "anthropic", "4": "openrouter", "5": "openai"}
     print("\nPlease select an LLM provider to generate descriptions:")
     for key, value in providers.items():
         print(f"  {key}: {value.capitalize()}")
     
     while True:
-        choice = input("Enter the number for your choice (1/2/3/4): ")
+        choice = input("Enter the number for your choice (1/2/3/4/5): ")
         if choice in providers:
             return providers[choice]
         else:
-            print("❌ Invalid selection. Please enter 1, 2, or 3.")
-
+            print("❌ Invalid selection. Please enter 1, 2, 3, 4, or 5.")
 
 def generate_docs(json_path,  llm_provider, output_dir="docs", output_file="procedures.md"):
     with open(json_path) as f:

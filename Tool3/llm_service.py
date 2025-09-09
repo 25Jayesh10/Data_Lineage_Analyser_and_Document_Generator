@@ -53,6 +53,16 @@ def _initialize_openrouter():
         print("❌ Error: OPENROUTER_API_KEY not found in .env file.")
         return None
 
+def _initialize_openai():
+    """Initializes and returns the standard OpenAI client."""
+    try:
+        # The library can infer the key from the environment, but we check explicitly for a better error message.
+        if not os.getenv("OPENAI_API_KEY"):
+            raise KeyError
+        return openai.OpenAI() # Automatically uses OPENAI_API_KEY from .env
+    except KeyError:
+        print("❌ Error: OPENAI_API_KEY not found in .env file.")
+        return None
 
 def _generate_with_gemini(prompt: str) -> str:
     """Generates content using Google Gemini."""
@@ -127,7 +137,22 @@ def _generate_with_openrouter(prompt: str, model: str = "mistralai/mistral-small
     except Exception as e:
         return f"Description could not be generated due to an OpenRouter API error: {e}"
 
+def _generate_with_openai(prompt: str) -> str:
+    """Generates content using OpenAI."""
+    openai_client = _initialize_openai()
+    if not openai_client:
+        return "Description generation failed due to missing OpenAI API key."
 
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4o",  # You can specify other models like "gpt-3.5-turbo"
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"Description could not be generated due to an OpenAI API error: {e}"
+    
 def generate_business_logic(proc_name: str, params: list, tables: list, sql_code: str, llm_provider: str) -> str:
     """
     Crafts a detailed prompt and gets a business logic description from the selected LLM provider.
@@ -163,6 +188,8 @@ def generate_business_logic(proc_name: str, params: list, tables: list, sql_code
         return _generate_with_anthropic(prompt)
     elif llm_provider == "gemini":
         return _generate_with_gemini(prompt)
+    elif llm_provider == "openai": # 👈 ADDED THIS NEW PROVIDER
+        return _generate_with_openai(prompt)
     elif llm_provider == "openrouter":
         return _generate_with_openrouter(prompt)
     else:
