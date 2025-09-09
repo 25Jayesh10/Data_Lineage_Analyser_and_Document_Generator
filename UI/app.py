@@ -14,6 +14,34 @@ st.set_page_config(
 )
 
 # ======================================================================================
+# Custom Styling (Dark Dashboard Theme)
+# ======================================================================================
+st.markdown(
+    """
+    <style>
+        .stApp {
+            background-color: #0e1117;
+            color: #fafafa;
+        }
+        h1, h2, h3, h4 {
+            color: #f9fafb;
+        }
+        .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+        .stChatMessage {
+            background: #262730;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 7px;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# ======================================================================================
 # Data Loading
 # ======================================================================================
 
@@ -78,7 +106,8 @@ doc_files = sorted(docs_dir.glob("*.md"))
 # ======================================================================================
 # Sidebar File Selection
 # ======================================================================================
-st.sidebar.title("📄 File Selection")
+st.sidebar.title("📂 File Selection")
+st.sidebar.markdown("Choose input files for the dashboard:")
 
 # --- JSON selection ---
 if not lineage_files:
@@ -87,10 +116,7 @@ if not lineage_files:
     st.stop()
 
 file_options = {file.name: file for file in lineage_files}
-selected_file_name = st.sidebar.selectbox(
-    "Choose a lineage JSON file:",
-    options=file_options.keys()
-)
+selected_file_name = st.sidebar.selectbox("📄 Lineage JSON:", options=file_options.keys())
 selected_file_path = file_options[selected_file_name]
 lineage_data = load_json_file(selected_file_path)
 
@@ -99,10 +125,7 @@ diagram_content = None
 selected_diagram_name = None
 if diagram_files:
     diagram_options = {file.name: file for file in diagram_files}
-    selected_diagram_name = st.sidebar.selectbox(
-        "Choose a Mermaid diagram:",
-        options=diagram_options.keys()
-    )
+    selected_diagram_name = st.sidebar.selectbox("🔗 Mermaid Diagram:", options=diagram_options.keys())
     selected_diagram_path = diagram_options[selected_diagram_name]
     diagram_content = load_text_file(selected_diagram_path)
 else:
@@ -113,14 +136,14 @@ doc_content = None
 selected_doc_name = None
 if doc_files:
     doc_options = {file.name: file for file in doc_files}
-    selected_doc_name = st.sidebar.selectbox(
-        "Choose documentation file:",
-        options=doc_options.keys()
-    )
+    selected_doc_name = st.sidebar.selectbox("📘 Documentation:", options=doc_options.keys())
     selected_doc_path = doc_options[selected_doc_name]
     doc_content = load_text_file(selected_doc_path)
 else:
     st.sidebar.info("No documentation files found in 'output/docs'.")
+
+st.sidebar.divider()
+st.sidebar.info("💡 Tip: You can switch between JSON, Mermaid diagrams, and documentation.")
 
 # ======================================================================================
 # Main Dashboard UI
@@ -134,44 +157,60 @@ st.divider()
 col1, col2 = st.columns([1, 2])  # JSON smaller, Mermaid bigger
 
 with col1:
-    st.header("Lineage JSON Data")
+    st.subheader("📊 Lineage JSON Data")
     st.json(lineage_data, expanded=True)
 
 with col2:
     if diagram_content:
-        st.header("📈 Mermaid Diagram (Dynamic Preview)")
-        st.caption(f"Diagram: {selected_diagram_name}")
+        st.subheader("🔗 Mermaid Diagram (Preview)")
         render_mermaid_dynamic(diagram_content)
 
 # --- Full-width Mermaid section ---
 if diagram_content:
-    st.header("📈 Mermaid Diagram (Full Width)")
-    st.markdown("Below is the selected Mermaid diagram rendered in full width with dynamic sizing:")
-    render_mermaid_dynamic(diagram_content, base_height=300, multiplier=40, max_height=1200)
-
-# --- Documentation Section ---
-if doc_content:
-    st.header("📑 Documentation")
-    st.caption(f"From file: {selected_doc_name}")
-    render_markdown_with_mermaid(doc_content)
+    st.divider()
+    st.subheader("📈 Mermaid Diagram (Full Width)")
+    # MODIFIED: Increased base_height from 300 to 600
+    render_mermaid_dynamic(diagram_content, base_height=600, multiplier=40, max_height=1200)
 
 # ======================================================================================
-# Chat Assistant
+# Documentation & Chat Assistant Section
 # ======================================================================================
-st.header("🤖 Dashboard Assistant")
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Hello! Ask me about the currently loaded lineage data."}]
+st.divider()
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+doc_col, chat_col = st.columns(2, gap="large")
 
-if prompt := st.chat_input("Ask about the loaded data..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+with doc_col:
+    st.subheader("📘 Business Logic Documentation")
+    # Use Streamlit's native bordered container to correctly group all content.
+    with st.container(border=True):
+        if doc_content:
+            st.caption(f"From file: {selected_doc_name}")
+            render_markdown_with_mermaid(doc_content)
+        else:
+            st.info("No documentation file selected. Content will appear here.")
 
-    with st.chat_message("assistant"):
+with chat_col:
+    st.subheader("🤖 Dashboard Assistant")
+
+    # Use a bordered container for the chat history for a consistent look.
+    with st.container(border=True):
+        # Initialize session state for messages if it doesn't exist
+        if "messages" not in st.session_state:
+            st.session_state.messages = [
+                {"role": "assistant", "content": "Hello! Ask me about the currently loaded lineage data."}
+            ]
+
+        # Display all past messages from session state
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+    # The chat input box will appear below the bordered container
+    if prompt := st.chat_input("Ask about the loaded data..."):
+        # Add user message to session state
+        st.session_state.messages.append({"role": "user", "content": prompt})
+
+        # Generate assistant response based on the prompt
         response = ""
         if "id" in prompt.lower():
             item_id = lineage_data.get("id", "N/A")
@@ -182,5 +221,8 @@ if prompt := st.chat_input("Ask about the loaded data..."):
         else:
             response = "I can answer questions about the 'id' or 'author' fields from the selected JSON file."
         
-        st.markdown(response)
-    st.session_state.messages.append({"role": "assistant", "content": response})
+        # Add assistant response to session state
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+        # Rerun the app to display the new messages inside the chat history card
+        st.experimental_rerun()
