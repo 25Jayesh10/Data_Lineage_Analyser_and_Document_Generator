@@ -77,7 +77,8 @@ def run_command_line_chat(lineage_path="./output/lineage1.json"):
             if llm_choice == "openai":
                 response = client.chat.completions.create(
                     model=model,
-                    messages=messages
+                    messages=messages,
+                    stream=False
                 )
                 answer = response.choices[0].message.content
             elif llm_choice == "azure openai":
@@ -86,7 +87,8 @@ def run_command_line_chat(lineage_path="./output/lineage1.json"):
                     # Use deployment name for Azure OpenAI
                         response = client.chat.completions.create(
                             model=azure_deployment_name,
-                            messages=messages
+                            messages=messages,
+                            stream=False
                         )
                     answer = response.choices[0].message.content
             elif llm_choice == "gemini":
