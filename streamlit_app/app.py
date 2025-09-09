@@ -83,17 +83,13 @@ if st.session_state.get("chat_started"):
             elif provider == "azure openai":
                 client = _initialize_azure()
                 azure_deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
-                response_stream = client.chat.completions.create(
+                response = client.chat.completions.create(
                     model=azure_deployment_name,
                     messages=st.session_state["messages"],
-                    stream=True
+                    stream=False
                 )
-                answer = ""
-                stream_container = st.empty()
-                for chunk in response_stream:
-                    delta = getattr(chunk.choices[0].delta, "content", "")
-                    answer += delta
-                    stream_container.write(f"Assistant: {answer}")
+                answer = response.choices[0].message.content
+                st.write(f"Assistant: {answer}")
             elif provider == "gemini":
                 client = _initialize_gemini()
                 prompt = '\n'.join([m['content'] for m in st.session_state["messages"] if m['role'] in ['user', 'assistant']])
