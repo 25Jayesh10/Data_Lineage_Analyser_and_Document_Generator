@@ -14,6 +14,24 @@ Tool3 is designed to automate the generation of comprehensive Markdown documenta
 	- Business logic descriptions using LLMs (Gemini, Azure OpenAI, Anthropic, OpenAI, OpenRouter)
 - Interactive selection of LLM provider.
 - Output includes Mermaid diagrams for call graphs.
+## UI: Lineage Chatbot
+
+Tool3 can be used with the Streamlit-based UI (`streamlit_app/app.py`) to interactively query and explore the generated lineage and documentation. The chatbot interface allows users to ask questions about the lineage, understand business logic, and see the impact of changes in a conversational format. It supports multiple LLM providers and model selection for flexible, context-aware answers.
+
+### How the UI is Helpful
+- Enables interactive exploration of lineage and documentation.
+- Makes technical details accessible to non-technical users.
+- Provides instant feedback and explanations using LLMs.
+- Supports provider/model selection for tailored responses.
+
+## Packages Used and Their Function
+
+- `google-generativeai`: Connects to Gemini LLM for business logic generation.
+- `openai`: Connects to OpenAI and Azure OpenAI for LLM-based descriptions.
+- `anthropic`: Connects to Anthropic Claude for LLM-based descriptions.
+- `python-dotenv`: Loads environment variables for API keys and configuration.
+- `json`, `os`, `re`, `collections`: Standard Python libraries for file handling, parsing, and data manipulation.
+- `streamlit`: Powers the interactive UI for querying lineage and documentation.
 
 ## Setup Instructions
 
