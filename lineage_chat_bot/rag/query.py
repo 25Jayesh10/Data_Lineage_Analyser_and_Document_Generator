@@ -3,6 +3,7 @@ import chromadb
 from chromadb.config import Settings
 from openai import OpenAI
 from dotenv import load_dotenv
+from auto_ingestion import auto_ingest
 
 # Load environment variables
 load_dotenv()
@@ -40,6 +41,10 @@ def retrieve(query, k=3):
     return chunks
 
 if __name__ == "__main__":
+    # Auto-ingest if needed
+    print("🔧 Checking data freshness...")
+    auto_ingest()
+    
     # Example usage
     user_query = input("Enter your query: ")
     top_chunks = retrieve(user_query, k=3)

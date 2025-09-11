@@ -2,6 +2,7 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 from query import retrieve
+from auto_ingestion import auto_ingest
 
 # Load environment variables
 load_dotenv()
@@ -35,6 +36,13 @@ def chat(user_query, k=3):
     return response.choices[0].message.content.strip()
 
 if __name__ == "__main__":
+    # Auto-ingest if needed before starting chat
+    print("🔧 Initializing RAG system...")
+    if not auto_ingest():
+        print("❌ Failed to initialize data. Please check your lineage file.")
+        exit(1)
+    
+    print("\n💬 RAG Chatbot ready!")
     user_query = input("Ask your lineage question: ")
     answer = chat(user_query)
     print("Assistant:", answer)

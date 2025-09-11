@@ -88,7 +88,7 @@ def load_text_file(file_path):
 # Dynamic Mermaid Renderer
 # ======================================================================================
 
-def render_mermaid_dynamic(mermaid_code: str, base_height: int = 200, multiplier: int = 30, max_height: int = 1000):
+def render_mermaid_dynamic(mermaid_code: str, base_height: int = 400, multiplier: int = 50, max_height: int = 1500):
     """Render a Mermaid diagram with dynamic height adjustment."""
     line_count = len(mermaid_code.splitlines())
     height = min(max_height, base_height + line_count * multiplier)
@@ -187,7 +187,7 @@ with col2:
 if diagram_content:
     st.divider()
     st.subheader("📈 Mermaid Diagram (Full Width)")
-    render_mermaid_dynamic(diagram_content, base_height=600, multiplier=40, max_height=1200)
+    render_mermaid_dynamic(diagram_content, base_height=800, multiplier=60, max_height=2000)
 
 # ======================================================================================
 # Documentation & Chat Assistant Section
@@ -326,4 +326,4 @@ with chat_col:
 
                 # Save assistant response
                 st.session_state["messages"].append({"role": "assistant", "content": answer.strip()})
-                st.experimental_rerun()
+                st.rerun()
