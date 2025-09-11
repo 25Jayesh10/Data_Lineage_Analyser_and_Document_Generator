@@ -13,7 +13,7 @@ def slugify(text):
     return text
 
 # Load the SQL file
-with open("input/test/test3.sql", "r") as f:
+with open("input/test/test1.sql", "r") as f:
     sql_text = f.read()
 
 # Simple regex to extract stored procedure blocks (you can improve this as needed)
@@ -180,7 +180,7 @@ def slugify(text):
     return text
 
 # Load the SQL file
-with open("input/test/test3.sql", "r") as f:
+with open("input/test/test1.sql", "r") as f:
     sql_text = f.read()
 
 # Simple regex to extract stored procedure blocks (you can improve this as needed)

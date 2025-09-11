@@ -209,7 +209,15 @@ with chat_col:
     st.subheader("🤖 Dashboard Assistant")
 
     with st.container(border=True):
-        # Step 1: Provider selection
+        # Step 0: Chatbot Type Selection
+        chatbot_type = st.radio(
+            "Choose Chatbot Type:",
+            options=["Context Chatbot", "RAG Chatbot"],
+            index=0,
+            help="Context Chatbot uses lineage data directly; RAG Chatbot retrieves information from a vector database."
+        )
+
+        # Step 1: Provider selection (only for Context Chatbot)
         providers = {
             "Gemini": "gemini",
             "Azure OpenAI": "azure openai",
@@ -217,9 +225,14 @@ with chat_col:
             "OpenRouter": "openrouter"
         }
         provider_display = list(providers.keys())
-        selected_provider = st.selectbox("Select LLM Provider:", provider_display, key="provider_select")
+        selected_provider = st.selectbox(
+            "Select LLM Provider:",
+            provider_display,
+            key="provider_select",
+            disabled=(chatbot_type == "RAG Chatbot")
+        )
 
-        # Step 2: Model selection
+        # Step 2: Model selection (only for Context Chatbot)
         def get_models_for_provider(llm_choice):
             if llm_choice == "gemini":
                 return ["gemini-2.0-flash", "gemini-1.5-flash"]
@@ -232,27 +245,36 @@ with chat_col:
             else:
                 return []
 
-        selected_model = st.selectbox("Select Model:", get_models_for_provider(providers[selected_provider]), key="model_select")
+        selected_model = st.selectbox(
+            "Select Model:",
+            get_models_for_provider(providers[selected_provider]),
+            key="model_select",
+            disabled=(chatbot_type == "RAG Chatbot")
+        )
 
         # Step 3: Start chat
         if st.button("Start Chat", key="start_chat"):
-            st.session_state["provider"] = providers[selected_provider]
-            st.session_state["model"] = selected_model
-            st.session_state["chat_started"] = True
-            st.session_state["messages"] = [
-                {"role": "system", "content": (
-                    "You are a helpful assistant that answers questions based on the lineage data. "
-                    "Your purpose is to help the user gain better insights from the lineage. "
-                    "Help them understand what effects any changes will have and in general how the data flows. "
-                    "Do not answer any queries outside your scope; politely refuse when asked. "
-                    "Try to be concise and give accurate answers. Explain in detail only when explicitly asked "
-                    "or when it is absolutely necessary."
-                )},
-                {"role": "user", "content": f"Here is the data lineage in JSON:\n {json.dumps(lineage_data, indent=2)}"}
-            ]
+            st.session_state["chatbot_type"] = chatbot_type
+            if chatbot_type == "Context Chatbot":
+                st.session_state["provider"] = providers[selected_provider]
+                st.session_state["model"] = selected_model
+                st.session_state["chat_started"] = True
+                st.session_state["messages"] = [
+                    {"role": "system", "content": (
+                        "You are a helpful assistant that answers questions based on the lineage data. "
+                        "Your purpose is to help the user gain better insights from the lineage. "
+                        "Help them understand what effects any changes will have and in general how the data flows. "
+                        "Do not answer any queries outside your scope; politely refuse when asked. "
+                        "Try to be concise and give accurate answers. Explain in detail only when explicitly asked "
+                        "or when it is absolutely necessary."
+                    )},
+                    {"role": "user", "content": f"Here is the data lineage in JSON:\n {json.dumps(lineage_data, indent=2)}"}
+                ]
+            else:
+                st.session_state["rag_chat_started"] = True
 
         # Step 4: Chat UI
-        if st.session_state.get("chat_started"):
+        if st.session_state.get("chat_started") and st.session_state.get("chatbot_type") == "Context Chatbot":
             st.markdown(f"**Provider:** {selected_provider} | **Model:** {selected_model}")
             st.divider()
 
@@ -327,3 +349,19 @@ with chat_col:
                 # Save assistant response
                 st.session_state["messages"].append({"role": "assistant", "content": answer.strip()})
                 st.rerun()
+
+        # RAG Chatbot UI
+        if st.session_state.get("rag_chat_started") and st.session_state.get("chatbot_type") == "RAG Chatbot":
+            st.markdown("**RAG Chatbot is running.**")
+            st.info("This will use the RAG pipeline for answering your queries.")
+            # You can run the RAG chatbot logic here, for example:
+            import subprocess
+            import sys
+            # Run chatbot.py from the rag folder
+            rag_chatbot_path = os.path.join(project_root, "lineage_chat_bot", "rag", "chatbot.py")
+            # You may want to use subprocess to run the script and capture output
+            # This is a placeholder for actual integration
+            st.warning("RAG chatbot integration is a placeholder. Please implement the UI logic to interact with chatbot.py.")
+            # Example (uncomment to use subprocess, but not recommended for Streamlit):
+            # result = subprocess.run([sys.executable, rag_chatbot_path], capture_output=True, text=True)
+            #
