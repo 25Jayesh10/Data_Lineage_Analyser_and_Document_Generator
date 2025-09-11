@@ -58,24 +58,7 @@ graph TD
 
 ### Business Logic
 
-<<<<<<< HEAD
 Description could not be generated due to an OpenRouter API error: 401 Client Error: Unauthorized for url: https://openrouter.ai/api/v1/chat/completions
-=======
-Overall Purpose:
-1. The primary business goal of the usp_WriteAudit stored procedure is to log audit trail events in a database table for tracking and monitoring purposes.
-
-Process Breakdown:
-2. The procedure starts by receiving two inputs: the event type (such as login, logout, data update, etc.) and details about the event.
-3. It then inserts this information into the AuditTrail table, which serves as a log to record all the events that occur within the system.
-4. By doing this, the procedure automates the process of capturing and storing audit trail information, ensuring that all relevant events are logged for future reference.
-  
-Key Business Rules:
-5. One key business rule embedded in this logic is that every event type and its corresponding details must be recorded in the AuditTrail table without any exceptions.
-  
-Inputs and Outputs:
-6. Inputs: The procedure requires two pieces of information - the event type (e.g., login, logout) and the details of the event (e.g., user ID, timestamp).
-7. Outputs: The procedure outputs the logged information into the AuditTrail table, providing a comprehensive record of all system events for auditing and monitoring purposes.
->>>>>>> 1e22c2f2e0ba7dfab25e67177739aae1cdfed440
 
 ---
 
@@ -118,9 +101,6 @@ graph TD
 
 ### Business Logic
 
-<<<<<<< HEAD
-Description could not be generated due to an OpenRouter API error: 401 Client Error: Unauthorized for url: https://openrouter.ai/api/v1/chat/completions
-=======
 Overall Purpose:
 1. The primary business goal of this stored procedure is to automate the creation of a new purchase order in the system when a user requests to purchase a certain quantity of a specific item.
 
@@ -136,7 +116,6 @@ Key Business Rules:
 Inputs and Outputs:
 7. Inputs: The procedure requires two inputs - the ID of the item being purchased (@itemId) and the quantity of that item (@quantity).
 8. Outputs: The procedure outputs a newly created purchase order record in the PurchaseOrders table with the specified item ID, quantity, and 'OPEN' status. Additionally, an audit log entry is created to track the creation of the purchase order.
->>>>>>> 1e22c2f2e0ba7dfab25e67177739aae1cdfed440
 
 ---
 
@@ -180,9 +159,6 @@ graph TD
 
 ### Business Logic
 
-<<<<<<< HEAD
-Description could not be generated due to an OpenRouter API error: 401 Client Error: Unauthorized for url: https://openrouter.ai/api/v1/chat/completions
-=======
 **Overall Purpose:**
 The primary business goal of this procedure is to automatically generate a purchase order and create an audit record when the quantity of a specific inventory item falls below its reorder level.
 
@@ -201,7 +177,6 @@ The primary business goal of this procedure is to automatically generate a purch
 **Inputs and Outputs:**
 - **Inputs:** The procedure requires the ItemID of the inventory item for which the reorder check is being performed.
 - **Outputs:** If the quantity of the item is below the reorder level, the procedure generates a purchase order and logs an audit entry for future reference.
->>>>>>> 1e22c2f2e0ba7dfab25e67177739aae1cdfed440
 
 ---
 
@@ -246,9 +221,6 @@ graph TD
 
 ### Business Logic
 
-<<<<<<< HEAD
-Description could not be generated due to an OpenRouter API error: 401 Client Error: Unauthorized for url: https://openrouter.ai/api/v1/chat/completions
-=======
 **Overall Purpose:**
 The primary business goal of this stored procedure is to update the quantity of a specific item in the Inventory table based on a given adjustment value. Additionally, it records the timestamp of the update and triggers an audit trail to track the adjustment made.
 
@@ -268,7 +240,6 @@ The primary business goal of this stored procedure is to update the quantity of 
 **Inputs and Outputs:**
 - **Inputs:** The procedure requires the ItemID (to identify the item to be updated) and the Adjustment value (to adjust the quantity of the item).
 - **Outputs:** The procedure updates the Quantity and LastUpdated fields in the Inventory table, triggers an audit trail entry, and may initiate a reorder process based on the updated inventory levels.
->>>>>>> 1e22c2f2e0ba7dfab25e67177739aae1cdfed440
 
 ---
 
@@ -310,9 +281,6 @@ graph TD
 
 ### Business Logic
 
-<<<<<<< HEAD
-Description could not be generated due to an OpenRouter API error: 401 Client Error: Unauthorized for url: https://openrouter.ai/api/v1/chat/completions
-=======
 Overall Purpose:
 The primary business goal of this procedure is to retrieve the stock level (quantity) of a specific item from the Inventory table and log an audit trail entry indicating that the function was called for that particular item.
 
@@ -334,7 +302,6 @@ Inputs:
 Outputs:
 - Quantity: The stock level of the specified item retrieved from the Inventory table.
 - Audit Trail Entry: An entry indicating that the function was called for a specific item, providing a traceability mechanism for tracking when stock levels were checked.
->>>>>>> 1e22c2f2e0ba7dfab25e67177739aae1cdfed440
 
 ---
 
@@ -376,9 +343,6 @@ graph TD
 
 ### Business Logic
 
-<<<<<<< HEAD
-Description could not be generated due to an OpenRouter API error: 401 Client Error: Unauthorized for url: https://openrouter.ai/api/v1/chat/completions
-=======
 Overall Purpose:
 1. The primary business goal of the stored procedure fn_CheckStockHealth is to monitor the stock levels of a specific item in the inventory and take action if the stock falls below a certain threshold.
 
@@ -395,7 +359,6 @@ Key Business Rules:
 Inputs and Outputs:
 8. **Inputs:** The procedure requires the item ID as an input parameter to check the stock health of a specific item.
 9. **Outputs:** The procedure returns a status message indicating whether the item's stock health is 'LOW' or not. Additionally, it triggers an audit entry to be written in the database for tracking purposes.
->>>>>>> 1e22c2f2e0ba7dfab25e67177739aae1cdfed440
 
 ---
 
@@ -439,9 +402,6 @@ graph TD
 
 ### Business Logic
 
-<<<<<<< HEAD
-Description could not be generated due to an OpenRouter API error: 401 Client Error: Unauthorized for url: https://openrouter.ai/api/v1/chat/completions
-=======
 **Overall Purpose:**
 The primary business goal of this procedure is to generate an inventory report for a specific item. This report includes the quantity of the item in stock and its health status.
 
@@ -459,7 +419,6 @@ The primary business goal of this procedure is to generate an inventory report f
 **Inputs and Outputs:**
 - **Inputs:** The procedure requires the item ID as an input parameter.
 - **Outputs:** The procedure generates a report string that includes the item ID, quantity in stock, and health status of the item.
->>>>>>> 1e22c2f2e0ba7dfab25e67177739aae1cdfed440
 
 ---
 
@@ -495,9 +454,6 @@ graph TD
 
 ### Business Logic
 
-<<<<<<< HEAD
-Description could not be generated due to an OpenRouter API error: 401 Client Error: Unauthorized for url: https://openrouter.ai/api/v1/chat/completions
-=======
 Overall Purpose:
 1. The primary business goal of this stored procedure is to automate processes related to inventory updates in the database, ensuring that necessary actions are taken after an inventory record is updated.
 
@@ -516,7 +472,6 @@ Key Business Rules:
 Inputs and Outputs:
 4.1. Inputs: The trigger does not require any explicit parameters but captures the updated ItemID from the INSERTED table.
 4.2. Outputs: The trigger generates a log entry that includes details about the updated inventory item and the corresponding report, providing a record of the update event for auditing purposes.
->>>>>>> 1e22c2f2e0ba7dfab25e67177739aae1cdfed440
 
 ---
 
@@ -550,9 +505,6 @@ graph TD
 
 ### Business Logic
 
-<<<<<<< HEAD
-Description could not be generated due to an OpenRouter API error: 401 Client Error: Unauthorized for url: https://openrouter.ai/api/v1/chat/completions
-=======
 Overall Purpose:
 1. The primary business goal of this stored procedure is to handle actions that need to be taken after a new purchase order is inserted into the PurchaseOrders table. It triggers the execution of auditing processes and checks the stock health of the items in the purchase order.
 
@@ -569,7 +521,6 @@ Key Business Rules:
 Inputs and Outputs:
 8. Inputs: The trigger requires the ItemID and Quantity of the newly inserted purchase order to perform the auditing and stock health check.
 9. Outputs: The trigger produces audit log entries detailing the trigger firing and the stock health status of the items in the purchase order.
->>>>>>> 1e22c2f2e0ba7dfab25e67177739aae1cdfed440
 
 ---
 
